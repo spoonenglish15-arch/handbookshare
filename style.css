@@ -350,6 +350,14 @@ button, .file-label {
   font-size: 11px;
   color: #b7a792;
 }
+.share-status {
+  margin-left: 8px;
+  font-weight: 700;
+  color: #b45309;
+}
+.share-status.is-shared {
+  color: #16a34a;
+}
 
 .notepad-input {
   --memo-font-size: 14px;

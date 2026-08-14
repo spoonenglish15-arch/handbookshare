@@ -715,8 +715,16 @@ function isCloudReady() {
   return Boolean(window.HandbookCloud?.isEnabled());
 }
 
-function updateCloudUserBar() {
-  if (cloudUserBar) cloudUserBar.hidden = true;
+function updateShareStatus() {
+  const el = document.getElementById('shareStatus');
+  if (!el) return;
+  if (isCloudReady()) {
+    el.textContent = '팀 공유 중';
+    el.classList.add('is-shared');
+  } else {
+    el.textContent = '이 컴퓨터에만 저장 · 공유 안 됨';
+    el.classList.remove('is-shared');
+  }
 }
 
 function applyRemoteTabData(data) {
@@ -816,7 +824,9 @@ async function boot() {
   applyTabOrder();
   bindRoleTabDrag();
   updateCloudUserBar();
+  updateShareStatus();
   if (window.HandbookCloud?.isEnabled()) HandbookCloud.init();
+  updateShareStatus();
   await startApp();
 }
 
