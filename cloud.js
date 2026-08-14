@@ -60,15 +60,13 @@
     if (auth) callback(auth.currentUser);
   }
 
-  function currentUser() {
-    return auth ? auth.currentUser : null;
-  }
+ function currentUser() {
+  return { email: '', displayName: 'Shared' };
+}
 
-  async function signIn() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithPopup(provider);
-  }
+async function signIn() {
+  return currentUser();
+}
 
   async function signOut() {
     stopWatch();
