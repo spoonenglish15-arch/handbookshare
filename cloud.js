@@ -1,22 +1,28 @@
 (function () {
   const SAVE_DELAY = 700;
   let app = null;
+  let auth = null;
   let db = null;
   let authCallback = null;
   let saveTimer = null;
   let pendingTabId = '';
   let pendingData = null;
   let lastPushedAt = 0;
+  let lastAnnouncePushedAt = 0;
   let unsubscribe = null;
+  let announceUnsub = null;
   let flushPromise = null;
-
-  const SHARED_USER = {
-    email: '',
-    displayName: 'Shared'
-  };
+  let announceTimer = null;
+  let pendingAnnounce = null;
 
   function config() {
     return window.FIREBASE_CONFIG || {};
+  }
+
+  function allowedEmails() {
+    return (window.FIREBASE_ALLOWED_EMAILS || [])
+      .map(email => String(email || '').trim().toLowerCase())
+      .filter(Boolean);
   }
 
   function isEnabled() {
@@ -28,8 +34,10 @@
     return JSON.parse(JSON.stringify(data || {}));
   }
 
-  function isAllowed() {
-    return true;
+  function isAllowed(email) {
+    const list = allowedEmails();
+    if (!list.length) return true;
+    return list.includes(String(email || '').trim().toLowerCase());
   }
 
   function docRef(tabId) {
@@ -38,68 +46,64 @@
 
   function init() {
     if (!isEnabled() || app) return isEnabled();
-
     app = firebase.initializeApp(config());
+    auth = firebase.auth();
     db = firebase.firestore();
-
-    if (authCallback) {
-      authCallback(SHARED_USER);
-    }
-
+    auth.onAuthStateChanged(user => {
+      if (authCallback) authCallback(user);
+    });
     return true;
   }
 
   function onAuth(callback) {
     authCallback = callback;
-    if (callback) callback(SHARED_USER);
+    if (auth) callback(auth.currentUser);
   }
 
   function currentUser() {
-    return SHARED_USER;
+    return auth ? auth.currentUser : null;
   }
 
   async function signIn() {
-    return SHARED_USER;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await auth.signInWithPopup(provider);
   }
 
   async function signOut() {
-    await flushSave();
     stopWatch();
+    stopAnnounceWatch();
+    await flushSave();
+    await flushAnnounceSave();
+    await auth.signOut();
   }
 
   async function loadTab(tabId) {
     const snap = await docRef(tabId).get();
     if (!snap.exists) return null;
-
     const row = snap.data() || {};
     return row.payload || null;
   }
 
   async function saveTabNow(tabId, data) {
-    if (!isEnabled() || !tabId || !data) return;
-
+    if (!isEnabled() || !currentUser() || !tabId || !data) return;
     lastPushedAt = Date.now();
-
     const payload = cloneData(data);
     payload.updatedAtMs = lastPushedAt;
-    payload.updatedBy = 'shared';
+    payload.updatedBy = currentUser().email || '';
     payload.role = tabId;
-
     await docRef(tabId).set({
       payload,
       updatedAtMs: lastPushedAt,
-      updatedBy: 'shared'
+      updatedBy: payload.updatedBy
     });
   }
 
   function scheduleSave(tabId, data) {
-    if (!isEnabled() || !tabId || !data) return;
-
+    if (!isEnabled() || !currentUser() || !tabId || !data) return;
     pendingTabId = tabId;
     pendingData = cloneData(data);
-
     clearTimeout(saveTimer);
-
     saveTimer = setTimeout(() => {
       flushSave();
     }, SAVE_DELAY);
@@ -107,20 +111,15 @@
 
   async function flushSave() {
     clearTimeout(saveTimer);
-
     if (!pendingTabId || !pendingData) return;
     if (flushPromise) return flushPromise;
-
     const tabId = pendingTabId;
     const data = pendingData;
-
     pendingTabId = '';
     pendingData = null;
-
     flushPromise = saveTabNow(tabId, data).finally(() => {
       flushPromise = null;
     });
-
     return flushPromise;
   }
 
@@ -131,28 +130,71 @@
     }
   }
 
+  function stopAnnounceWatch() {
+    if (announceUnsub) {
+      announceUnsub();
+      announceUnsub = null;
+    }
+  }
+
+  async function loadAnnounce() {
+    const snap = await docRef('announce').get();
+    if (!snap.exists) return '';
+    return String((snap.data() || {}).text || '');
+  }
+
+  async function saveAnnounceNow(text) {
+    if (!isEnabled() || !currentUser()) return;
+    lastAnnouncePushedAt = Date.now();
+    await docRef('announce').set({
+      text: String(text || ''),
+      updatedAtMs: lastAnnouncePushedAt,
+      updatedBy: currentUser().email || ''
+    });
+  }
+
+  function scheduleAnnounceSave(text) {
+    if (!isEnabled() || !currentUser()) return;
+    pendingAnnounce = String(text || '');
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => {
+      flushAnnounceSave();
+    }, SAVE_DELAY);
+  }
+
+  async function flushAnnounceSave() {
+    clearTimeout(announceTimer);
+    if (pendingAnnounce === null) return;
+    const text = pendingAnnounce;
+    pendingAnnounce = null;
+    await saveAnnounceNow(text);
+  }
+
+  function subscribeAnnounce(onData) {
+    stopAnnounceWatch();
+    if (!isEnabled() || !currentUser()) return () => {};
+    announceUnsub = docRef('announce').onSnapshot(snap => {
+      if (!snap.exists) return;
+      const row = snap.data() || {};
+      if (row.updatedAtMs && row.updatedAtMs === lastAnnouncePushedAt) return;
+      if (typeof onData === 'function') onData(String(row.text || ''));
+    }, error => {
+      console.error(error);
+    });
+    return stopAnnounceWatch;
+  }
+
   function subscribeTab(tabId, onData) {
     stopWatch();
-
-    if (!isEnabled() || !tabId) return () => {};
-
-    unsubscribe = docRef(tabId).onSnapshot(
-      snap => {
-        if (!snap.exists) return;
-
-        const row = snap.data() || {};
-
-        if (row.updatedAtMs && row.updatedAtMs === lastPushedAt) return;
-
-        if (typeof onData === 'function') {
-          onData(row.payload || null);
-        }
-      },
-      error => {
-        console.error(error);
-      }
-    );
-
+    if (!isEnabled() || !currentUser() || !tabId) return () => {};
+    unsubscribe = docRef(tabId).onSnapshot(snap => {
+      if (!snap.exists) return;
+      const row = snap.data() || {};
+      if (row.updatedAtMs && row.updatedAtMs === lastPushedAt) return;
+      if (typeof onData === 'function') onData(row.payload || null);
+    }, error => {
+      console.error(error);
+    });
     return stopWatch;
   }
 
@@ -169,6 +211,12 @@
     scheduleSave,
     flushSave,
     subscribeTab,
-    stopWatch
+    stopWatch,
+    loadAnnounce,
+    saveAnnounceNow,
+    scheduleAnnounceSave,
+    flushAnnounceSave,
+    subscribeAnnounce,
+    stopAnnounceWatch
   };
 })();

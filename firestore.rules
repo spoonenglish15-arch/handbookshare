@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /handbook/{tab} {
       allow read, write: if request.auth != null
-        && (tab == 'codi' || tab == 'coach');
+        && (tab == 'codi' || tab == 'coach' || tab == '2f' || tab == 'b1' || tab == 'announce');
     }
   }
 }

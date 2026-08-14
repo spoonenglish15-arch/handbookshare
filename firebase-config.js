@@ -1,10 +1,17 @@
+// Firebase 콘솔 > 프로젝트 설정 > 내 앱 > SDK 설정값 을 아래에 붙여넣으세요.
+// Authentication > Google 사용 설정도 켜야 합니다.
 window.FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyBoJvrzeCM6aEJtjV6Jj52Zy5TTywngvM4',
-  authDomain: 'handbookshare-d7c34.firebaseapp.com',
-  projectId: 'handbookshare-d7c34',
-  storageBucket: 'handbookshare-d7c34.firebasestorage.app',
-  messagingSenderId: '744335372067',
-  appId: '1:744335372067:web:4999627303651fab0ae696'
+  apiKey: '',
+  authDomain: '',
+  projectId: '',
+  storageBucket: '',
+  messagingSenderId: '',
+  appId: ''
 };
 
-window.FIREBASE_ALLOWED_EMAILS = [];
+// 사용할 3명 구글 계정을 소문자로 넣으세요. 비우면 로그인한 구글 계정은 모두 들어옵니다.
+window.FIREBASE_ALLOWED_EMAILS = [
+  // 'member1@company.com',
+  // 'member2@company.com',
+  // 'member3@company.com'
+];
