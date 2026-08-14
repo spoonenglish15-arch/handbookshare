@@ -513,14 +513,10 @@ function hasHandbookContent(data) {
 
 function pickPreferredTabData(local, remote) {
   if (!remote) return { data: local, upload: Boolean(local) };
-  const localHas = hasHandbookContent(local);
-  const remoteHas = hasHandbookContent(remote);
-  const localMs = Number(local?.updatedAtMs || 0);
-  const remoteMs = Number(remote?.updatedAtMs || 0);
-  if (localHas && !remoteHas) return { data: local, upload: true };
-  if (localHas && localMs > remoteMs) return { data: local, upload: true };
   return { data: remote, upload: false };
 }
+
+async function loadTabData(tabId, { useDefaultJson = false } = {}) {
   window.HandbookCloud?.stopWatch?.();
   activeTab = tabId;
   const tab = TABS[tabId];
@@ -715,21 +711,16 @@ function isCloudReady() {
   return Boolean(window.HandbookCloud?.isEnabled());
 }
 
-function updateShareStatus() {
-  const el = document.getElementById('shareStatus');
-  if (!el) return;
-  if (isCloudReady()) {
-    el.textContent = '팀 공유 중';
-    el.classList.add('is-shared');
-  } else {
-    el.textContent = '이 컴퓨터에만 저장 · 공유 안 됨';
-    el.classList.remove('is-shared');
-  }
+function updateCloudUserBar() {
+  if (cloudUserBar) cloudUserBar.hidden = true;
 }
 
 function applyRemoteTabData(data) {
   if (!data) return;
   const next = normalizeManualData(data);
+  const remoteMs = Number(next.updatedAtMs || 0);
+  const localMs = Number(manualData?.updatedAtMs || 0);
+  if (remoteMs && localMs && remoteMs < localMs) return;
   try {
     if (JSON.stringify(next) === JSON.stringify(manualData)) return;
   } catch {
@@ -824,9 +815,7 @@ async function boot() {
   applyTabOrder();
   bindRoleTabDrag();
   updateCloudUserBar();
-  updateShareStatus();
   if (window.HandbookCloud?.isEnabled()) HandbookCloud.init();
-  updateShareStatus();
   await startApp();
 }
 
@@ -1921,10 +1910,18 @@ memoInput?.addEventListener('input', () => {
   fitTextarea(memoInput);
   if (memoSaveHint) memoSaveHint.textContent = '저장 중...';
   clearTimeout(memoSaveTimer);
+  saveLocal();
   memoSaveTimer = setTimeout(() => {
-    saveLocal();
     if (memoSaveHint) memoSaveHint.textContent = '저장됨';
   }, 250);
+});
+window.addEventListener('pagehide', () => {
+  if (manualData && memoInput) {
+    manualData.memo = memoInput.value;
+    saveLocal();
+  }
+  window.HandbookCloud?.flushSave?.();
+  window.HandbookCloud?.flushAnnounceSave?.();
 });
 window.addEventListener('resize', () => {
   clearTimeout(fitTextareaTimer);
