@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPOON TEAM HANDBOOK</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-main">
+        <h1 id="appTitle">SPOON TEAM HANDBOOK</h1>
+        <nav class="role-tabs" aria-label="역할 탭">
+          <button type="button" class="role-tab is-active" data-tab="codi" aria-label="코디 탭">
+            <span class="role-tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 14v-1a8 8 0 0 1 16 0v1" />
+                <path d="M4 14a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h1" />
+                <path d="M20 14a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1" />
+                <path d="M12 14v4" />
+                <circle cx="12" cy="7" r="3" />
+              </svg>
+            </span>
+            <span class="role-tab-label">코디</span>
+          </button>
+          <button type="button" class="role-tab" data-tab="coach" aria-label="코치 탭">
+            <span class="role-tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="7" r="3" />
+                <path d="M6 20v-1a6 6 0 0 1 12 0v1" />
+                <path d="M16 4.5l3 .8-1.2 2.8" />
+                <circle cx="19" cy="4" r="1.2" />
+              </svg>
+            </span>
+            <span class="role-tab-label">코치</span>
+          </button>
+        </nav>
+      </div>
+      <div class="cloud-user" id="cloudUserBar" hidden>
+        <span id="cloudUserEmail"></span>
+        <small id="cloudSyncHint">클라우드 저장</small>
+        <button id="signOutBtn" type="button">로그아웃</button>
+      </div>
+      <button id="editToggle" class="primary-btn" type="button" hidden>편집 모드 OFF</button>
+    </header>
+
+    <section class="top-panel">
+      <aside class="notepad-panel" aria-label="메모장">
+        <div class="notepad-header">
+          <div class="notepad-title-row">
+            <span>메모장</span>
+            <div class="memo-font-size" role="group" aria-label="메모장 글씨 크기">
+              <button type="button" id="memoFontDown" class="memo-font-btn" aria-label="글씨 작게">A-</button>
+              <span id="memoFontSizeLabel" class="memo-font-size-label">14</span>
+              <button type="button" id="memoFontUp" class="memo-font-btn" aria-label="글씨 크게">A+</button>
+            </div>
+          </div>
+          <small id="memoSaveHint">자동 저장</small>
+        </div>
+        <textarea id="memoInput" class="notepad-input" placeholder="오늘 확인할 내용, 전달사항 등을 적어 두세요."></textarea>
+      </aside>
+      <section class="toolbar">
+        <label class="search-box">
+          <span>검색</span>
+          <input id="searchInput" type="search" placeholder="예: 노트, 매칭, 영수증" />
+        </label>
+        <div class="toolbar-actions">
+          <button id="addWorkBtn" type="button">+ 업무 생성</button>
+          <button id="exportBtn" type="button" class="data-io-btn">저장하기</button>
+          <label class="file-label data-io-btn">
+            불러오기
+            <input id="importInput" type="file" accept="application/json,.json" />
+          </label>
+          <button id="resetBtn" type="button" class="danger-lite" hidden>기본값 복구</button>
+        </div>
+      </section>
+    </section>
+
+    <main id="manualRoot" class="manual-root"></main>
+
+    <section class="utility-panels">
+      <section class="quick-copy-panel" aria-label="자주 복사하는 것들">
+        <div class="quick-copy-header">
+          <h2>자주 복사하는 것들</h2>
+        </div>
+        <div id="quickCopyList" class="quick-copy-list"></div>
+        <div class="quick-copy-add">
+          <input id="quickCopyTitleInput" type="text" placeholder="타이틀" />
+          <textarea id="quickCopyInput" rows="2" placeholder="내용 (줄바꿈 가능)"></textarea>
+          <button id="quickCopyAddBtn" type="button">추가</button>
+        </div>
+      </section>
+
+      <section class="image-drive-panel" aria-label="이미지 모음">
+        <div class="image-drive-header">
+          <h2>이미지 모음</h2>
+        </div>
+        <div class="image-drive-row">
+          <input id="imageDriveInput" type="text" placeholder="구글 드라이브 링크 붙여넣기" />
+          <button id="imageDriveOpenBtn" type="button" class="image-drive-open-btn">열기</button>
+        </div>
+      </section>
+    </section>
+
+  </div>
+
+  <dialog id="taskDialog" class="dialog">
+    <form id="taskForm" class="dialog-form">
+      <h2 id="dialogTitle">업무 수정</h2>
+      <input type="hidden" id="dialogMode" />
+      <input type="hidden" id="dialogTimeId" />
+      <input type="hidden" id="dialogTaskId" />
+
+      <label>업무명<input id="taskTitle" required /></label>
+      <label>담당자<input id="taskOwner" placeholder="예: 운영 담당자" /></label>
+      <label>업무 설명<textarea id="taskDescription" rows="3"></textarea></label>
+      <label>주의사항 / 메모<textarea id="taskNotes" rows="3"></textarea></label>
+      <label>자주 쓰는 문구 <small>한 줄에 하나씩 입력</small><textarea id="taskPhrases" rows="4"></textarea></label>
+      <label>관련 링크 <small>URL만 붙여넣어도 됩니다</small><textarea id="taskLinks" rows="3" placeholder="https://... 또는 라벨 | https://..."></textarea></label>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancelTaskBtn">취소</button>
+        <button type="submit" class="primary-btn">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="timeDialog" class="dialog">
+    <form id="timeForm" class="dialog-form">
+      <h2 id="timeDialogTitle">업무 수정</h2>
+      <input type="hidden" id="timeMode" />
+      <input type="hidden" id="timeId" />
+      <input type="hidden" id="timeCategoryId" />
+      <div id="timeRangeWrap" class="time-range-fields">
+        <label>시작 시간
+          <select id="timeStart"></select>
+        </label>
+        <label>종료 시간
+          <select id="timeEnd"></select>
+        </label>
+      </div>
+      <div id="timePreviewClock" class="time-preview-clock" aria-hidden="true"></div>
+      <label>타이틀<input id="timeSummary" required placeholder="예: 어드민 문의 확인" /></label>
+      <label id="timeTaskTitleWrap">상세 업무명
+        <input id="timeTaskTitle" placeholder="예: 카카오채널 확인" />
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancelTimeBtn">취소</button>
+        <button type="submit" class="primary-btn">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="authGate" class="auth-gate" hidden>
+    <div class="auth-card">
+      <p class="eyebrow">SPOON TEAM</p>
+      <h2>핸드북 로그인</h2>
+      <p>팀 구글 계정으로 들어가면 세 명이 같은 업무를 공유합니다.</p>
+      <button id="googleSignInBtn" class="primary-btn" type="button">Google로 로그인</button>
+      <p id="authError" class="auth-error" hidden></p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="cloud.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

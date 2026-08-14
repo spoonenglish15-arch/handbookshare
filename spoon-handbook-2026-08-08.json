@@ -1,0 +1,416 @@
+{
+  "version": 2,
+  "type": "spoon-handbook-bundle",
+  "exportedAt": "2026-08-08T02:07:25.617Z",
+  "activeTab": "coach",
+  "tabs": {
+    "codi": {
+      "version": "1.0.0",
+      "updatedAt": "2026-08-08",
+      "title": "SPOON TEAM HANDBOOK",
+      "description": "시간대별 업무를 펼쳐 보고 수정하는 로컬 웹 매뉴얼",
+      "timeBlocks": [
+        {
+          "id": "time-1785906675547-57e67819ffdb9",
+          "label": "10:00 - 11:00",
+          "summary": "스푼하우스 방문하는사람 알람 넣기",
+          "tasks": [
+            {
+              "id": "task-1785906675547-ecabdee6b63758",
+              "title": "15분전 알림",
+              "owner": "코디",
+              "description": "네이버 캘린더 보고 스푼하우스 방문하는사람 일정확인 후 도착 15분전 알람 설정해서\n도착했을때 고객이 당황하지 않도록 반갑게 맞이 하기",
+              "notes": "ㅁㄴㅇㄹ",
+              "checklist": [],
+              "phrases": [
+                "ㅁㄴㅇㄹ"
+              ],
+              "links": [
+                {
+                  "label": "네이버 캘린더",
+                  "url": "https://calendar.naver.com/main#%7B%22sSection%22%3A%22scheduleMain%22%2C%22oParameter%22%3A%7B%22sViewType%22%3A%22month%22%2C%22sDate%22%3A%222026-08-06%22%7D%7D"
+                }
+              ],
+              "images": []
+            }
+          ],
+          "done": true
+        },
+        {
+          "id": "time-1785907262967-265614bde3fb7",
+          "label": "10:00 - 11:00",
+          "summary": "어드민 계량스푼 확인",
+          "tasks": [
+            {
+              "id": "task-1785907262967-031ec92c2beb68",
+              "title": "ㅁㄴㅇㄹ",
+              "owner": "",
+              "description": "학습관리 - 계량스푼관리",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [
+                {
+                  "label": "관리자 웹",
+                  "url": "https://app-admin.spoonenglish.com/"
+                }
+              ],
+              "images": []
+            }
+          ],
+          "done": true,
+          "hasLeaveCheck": true,
+          "leaveRecheck": false
+        },
+        {
+          "id": "time-1785984549154-a72249aa149dc8",
+          "label": "10:00 - 10:30",
+          "summary": "어드민 문의 확인 & 답변",
+          "done": true,
+          "tasks": [
+            {
+              "id": "task-1785984549154-208d3564c4b928",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": []
+            }
+          ],
+          "hasLeaveCheck": true,
+          "leaveRecheck": false
+        },
+        {
+          "id": "time-1785983432495-dfb7b0dfae0d3",
+          "label": "10:00 - 10:30",
+          "summary": "시크릿 모드 계량스푼 확인",
+          "done": true,
+          "tasks": [
+            {
+              "id": "task-1785983432495-dcd913b4725a98",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": []
+            }
+          ],
+          "hasLeaveCheck": true,
+          "leaveRecheck": false
+        },
+        {
+          "id": "time-1785983513060-8cf8922d08ce2",
+          "label": "10:00 - 10:30",
+          "summary": "구글시트 계량스푼 확인 (구)",
+          "done": true,
+          "tasks": [
+            {
+              "id": "task-1785983513060-ce66435065ac78",
+              "title": "",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [
+                {
+                  "label": "구글시트 계량스푼",
+                  "url": "https://docs.google.com/spreadsheets/d/16ldfTqIDnht_coqSTIh9kxDThLb6G8Q9z3GpXcoJ_AA/edit?resourcekey=&gid=1878790082#gid=1878790082"
+                }
+              ],
+              "images": []
+            }
+          ],
+          "hasLeaveCheck": true,
+          "leaveRecheck": false
+        },
+        {
+          "id": "time-1785909274424-6ae8bbdce3337",
+          "label": "18:00 - 19:00",
+          "summary": "스푼밥 + 리마인드 가기",
+          "done": false,
+          "tasks": [
+            {
+              "id": "task-1785909274424-48a41395fca74",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "시트 하나 만들어서 관리하는것을 권장\n\n운영관리 - 데이터 관리\n경로로 가서 추출기 안내대로 다운로드 + 입력",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [
+                {
+                  "label": "스푼밥 추출기",
+                  "url": "file:///C:/Users/Administrator/Desktop/%EC%8A%A4%ED%91%BC%EB%B0%A5%20%EC%B6%94%EC%B6%9C%EA%B8%B0_html/index.html"
+                }
+              ],
+              "images": []
+            }
+          ],
+          "hasLeaveCheck": false,
+          "leaveRecheck": false
+        }
+      ],
+      "role": "coach",
+      "ongoingBlocks": [
+        {
+          "id": "ongoing-1785908572893-a99eb88351514",
+          "label": "상시",
+          "summary": "카카오톡 문의",
+          "done": false,
+          "tasks": [
+            {
+              "id": "task-1785908572893-b22c01752333e8",
+              "title": "1",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": [
+                "https://drive.google.com/file/d/1RQ2FVWNxlFjI5XaT4GOdxIs7pcwahTLF/view?usp=drive_link"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1785908624979-4ac4ac9cf15508",
+          "label": "상시",
+          "summary": "카카오채널 문의",
+          "done": false,
+          "tasks": [
+            {
+              "id": "task-1785908624979-d38a4981b16cf8",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": []
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1785908642087-d95d4a84ab9e38",
+          "label": "상시",
+          "summary": "영수증 발급",
+          "done": false,
+          "tasks": [
+            {
+              "id": "task-1785908642087-d06845f58948b",
+              "title": "방법",
+              "owner": "",
+              "description": "이름 / 금액 / 날짜 \n변경해서 캡쳐해서 회원에게 보내주기",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [
+                {
+                  "label": "수강영수증",
+                  "url": "https://docs.google.com/presentation/d/1V7cbyXpALPw0aVbHwVeM_bV73ZjU1hUd/edit?slide=id.g3d3960a6ee7_1_0#slide=id.g3d3960a6ee7_1_0"
+                },
+                {
+                  "label": "출석확인증",
+                  "url": "https://docs.google.com/presentation/d/1Rg8VHRY940klL6nAqQFHexwM1asNhtiz/edit?slide=id.g3b2963c4072_0_6#slide=id.g3b2963c4072_0_6"
+                },
+                {
+                  "label": "토스 카드전표",
+                  "url": "https://app.tosspayments.com/signin?redirectUrl=https%3A%2F%2Fdashboard.tosspayments.com%2Fpayments-browse%2Ftm%2F1495414%2Fcard%3FdateRange%3D2026-06-24%2B00%3A00%3A00%26dateRange%3D2026-06-30%2B23%3A00%3A00%26currency%3DKRW%26dateType%3DACTIONED_AT"
+                }
+              ],
+              "images": []
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1785908681323-5505282b58791",
+          "label": "상시",
+          "summary": "홀딩회원 공유",
+          "done": false,
+          "tasks": [
+            {
+              "id": "task-1785908681323-81e8cbf4a58d",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": []
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1786007979681-0783c2e68d8868",
+          "label": "상시",
+          "summary": "앱 피드백 정리 및 전달",
+          "done": false,
+          "hasLeaveCheck": false,
+          "leaveRecheck": false,
+          "tasks": [
+            {
+              "id": "task-1786007979681-e25c2301db97d",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [
+                {
+                  "label": "개발자 전달 링크",
+                  "url": "https://docs.google.com/presentation/d/1WKolt_7TKmoJhcYhiIfhOdWDC7gYTEBOfs73ENw65Jg/edit?slide=id.g3f60859419c_0_141#slide=id.g3f60859419c_0_141"
+                }
+              ],
+              "images": []
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1785908735452-136f91b3ba2ec8",
+          "label": "상시",
+          "summary": "그룹클래스 확인 및 결제안내",
+          "done": true,
+          "tasks": [
+            {
+              "id": "task-1785908735452-6f53276af84c58",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [
+                {
+                  "label": "8월 그룹클래스 신청자",
+                  "url": "https://docs.google.com/spreadsheets/d/1A9uxSYrNZg-zcO6aCkqgFK9SKp5unGKO-KrdMX61Fn8/edit?gid=1854011551#gid=1854011551"
+                }
+              ],
+              "images": []
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1785909418836-8081cb3513d1b8",
+          "label": "상시",
+          "summary": "우리은행 현금영수증",
+          "done": true,
+          "tasks": [
+            {
+              "id": "task-1785909418836-272eded617e8",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": []
+            }
+          ]
+        },
+        {
+          "id": "ongoing-1785924151597-041a5df0e8e3b8",
+          "label": "상시",
+          "summary": "어페어",
+          "done": true,
+          "tasks": [
+            {
+              "id": "task-1785924151597-e4a5fdfb19f87",
+              "title": "ㅁ",
+              "owner": "",
+              "description": "",
+              "notes": "",
+              "checklist": [],
+              "phrases": [],
+              "links": [],
+              "images": []
+            }
+          ]
+        }
+      ],
+      "memo": "**이거 압축 파일 문 전달\n\n**수정슬라이드 추가할거 추가 / 앱 아이콘에 뱃지 1 안달림\n\n**재희 다음꺼 \n\n\n\n\n",
+      "quickCopies": [
+        {
+          "id": "copy-1786007132825-2e7a8c2e21d4",
+          "title": "앱 매뉴얼 (회원)",
+          "text": "https://spoonenglish15-arch.github.io/App_user_manual_0623/"
+        },
+        {
+          "id": "copy-1786008657026-c08426b55585a",
+          "title": "스푼밥",
+          "text": "HeLLo : ) ✨\n\n진행 중이던 수업이 모두 완료되어\n수업 연장 안내드리려고 연락드렸습니다.\n\n앱에서 아래와 같이\n**튜터링 탭 → 기존 튜터와 연장하기**\n경로로 들어가 구매해주시면 수업 연장이 가능합니다.\n\n진행 관련해서 궁금한 점 있으시면 편하게 말씀해주세요 : )"
+        },
+        {
+          "id": "copy-1786008719402-48482179bf641",
+          "title": "스푼밥 리마인드",
+          "text": "안녕하세요 **님!!\n수업 연장 관련해서 확인차 연락드립니다!\n혹시 어려운점이나 변동사항 있으시면 편하게 말씀 주세요 : )"
+        },
+        {
+          "id": "copy-1786089727008-cb4f5de7dd8c7",
+          "title": "오시는 길",
+          "text": "https://amplified-property-683.notion.site/6818166c7e4a42978281074c73391e3f?pvs=4"
+        },
+        {
+          "id": "copy-1786097475864-6d61f2d1a6e378",
+          "title": "이승재",
+          "text": "다음결제 시 outside 5회로 구매시켜서 해결"
+        }
+      ],
+      "contentWorks": [
+        {
+          "id": "content-1785986824423-395396c527fd7",
+          "title": "재희 세분화",
+          "text": "튜러링",
+          "done": true
+        },
+        {
+          "id": "content-1785986896827-d4fd4236e6e1f8",
+          "title": "피그마",
+          "text": "그룹클래스 포스터",
+          "done": true
+        },
+        {
+          "id": "content-1785987657746-9937a181df2948",
+          "title": "아이비",
+          "text": "히스토리 + 응원 (포스트)",
+          "done": false
+        },
+        {
+          "id": "content-1785987682333-c8d26bdc8e23",
+          "title": "도깨바",
+          "text": "레귤러 릴스",
+          "done": true
+        }
+      ],
+      "imageDriveUrl": "https://drive.google.com/drive/folders/1CB9Uuj6_RglLv9g8PXJPbhL3BXmI7I6k?usp=sharing"
+    },
+    "coach": {
+      "version": "1.0.0",
+      "updatedAt": "2026-08-08",
+      "title": "SPOON TEAM HANDBOOK",
+      "description": "",
+      "role": "coach",
+      "timeBlocks": [],
+      "ongoingBlocks": [],
+      "memo": "",
+      "quickCopies": [],
+      "contentWorks": [],
+      "imageDriveUrl": ""
+    }
+  },
+  "open": {
+    "codi": [],
+    "coach": []
+  }
+}
