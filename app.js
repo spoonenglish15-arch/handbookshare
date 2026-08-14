@@ -2,7 +2,7 @@ const LEGACY_STORAGE_KEY = 'spoon-operation-manual-data-v1';
 const LEGACY_OPEN_KEY = 'spoon-operation-manual-open-blocks-v1';
 const ACTIVE_TAB_KEY = 'spoon-handbook-active-tab-v1';
 const TAB_ORDER_KEY = 'spoon-handbook-tab-order-v1';
-const DEFAULT_TAB_ORDER = ['codi', 'coach'];
+const DEFAULT_TAB_ORDER = ['codi', 'coach', '2f', 'b1'];
 const TABS = {
   codi: {
     id: 'codi',
@@ -15,6 +15,18 @@ const TABS = {
     label: '코치',
     storageKey: 'spoon-handbook-coach-data-v1',
     openKey: 'spoon-handbook-coach-open-v1'
+  },
+  '2f': {
+    id: '2f',
+    label: '2F',
+    storageKey: 'spoon-handbook-2f-data-v1',
+    openKey: 'spoon-handbook-2f-open-v1'
+  },
+  b1: {
+    id: 'b1',
+    label: 'B1',
+    storageKey: 'spoon-handbook-b1-data-v1',
+    openKey: 'spoon-handbook-b1-open-v1'
   }
 };
 
@@ -46,6 +58,9 @@ let suppressRoleTabClick = false;
 
 const root = document.getElementById('manualRoot');
 const searchInput = document.getElementById('searchInput');
+const announceInput = document.getElementById('announceInput');
+const announceBox = document.getElementById('announceBox');
+const ANNOUNCE_KEY = 'spoon-handbook-announce-v1';
 const memoInput = document.getElementById('memoInput');
 const memoSaveHint = document.getElementById('memoSaveHint');
 const memoFontDown = document.getElementById('memoFontDown');
@@ -76,13 +91,10 @@ const timeForm = document.getElementById('timeForm');
 const cancelTimeBtn = document.getElementById('cancelTimeBtn');
 const cloudUserBar = document.getElementById('cloudUserBar');
 const cloudUserEmail = document.getElementById('cloudUserEmail');
-const cloudSyncHint = document.getElementById('cloudSyncHint');
 const authGate = document.getElementById('authGate');
 const authError = document.getElementById('authError');
 const googleSignInBtn = document.getElementById('googleSignInBtn');
-const signOutBtn = document.getElementById('signOutBtn');
 let applyingRemote = false;
-let cloudHintTimer = null;
 let appStarted = false;
 function emptyManualData() {
   return {
@@ -708,10 +720,6 @@ function updateCloudUserBar(user) {
   if (cloudUserEmail) cloudUserEmail.textContent = user?.email || '';
 }
 
-function setCloudHint(text) {
-  if (cloudSyncHint) cloudSyncHint.textContent = text;
-}
-
 function applyRemoteTabData(data) {
   if (!data) return;
   const next = normalizeManualData(data);
@@ -737,8 +745,66 @@ function watchCurrentTab() {
   });
 }
 
+function updateAnnounceUI(text, { flash = false } = {}) {
+  const next = String(text || '');
+  const typing = document.activeElement === announceInput;
+  if (announceInput && !typing) announceInput.value = next;
+  const visible = Boolean((typing ? announceInput.value : next).trim());
+  announceBox?.classList.toggle('has-text', visible);
+  if (flash && visible && !typing && announceBox) {
+    announceBox.classList.remove('is-fresh');
+    void announceBox.offsetWidth;
+    announceBox.classList.add('is-fresh');
+    setTimeout(() => announceBox.classList.remove('is-fresh'), 4000);
+  }
+}
+
+async function loadAnnounce() {
+  let text = '';
+  try {
+    text = localStorage.getItem(ANNOUNCE_KEY) || '';
+  } catch {
+    text = '';
+  }
+  if (isCloudReady()) {
+    try {
+      const remote = await HandbookCloud.loadAnnounce();
+      if (typeof remote === 'string') text = remote;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  if (announceInput) announceInput.value = text;
+  updateAnnounceUI(text);
+}
+
+function saveAnnounce(text) {
+  const next = String(text || '');
+  try {
+    localStorage.setItem(ANNOUNCE_KEY, next);
+  } catch {
+    /* ignore */
+  }
+  updateAnnounceUI(next);
+  if (isCloudReady()) HandbookCloud.scheduleAnnounceSave(next);
+}
+
+function watchAnnounce() {
+  if (!isCloudReady()) return;
+  HandbookCloud.subscribeAnnounce(text => {
+    try {
+      localStorage.setItem(ANNOUNCE_KEY, text);
+    } catch {
+      /* ignore */
+    }
+    updateAnnounceUI(text, { flash: true });
+  });
+}
+
 async function startApp() {
   await loadTabData(activeTab, { useDefaultJson: true });
+  await loadAnnounce();
+  watchAnnounce();
   updateTabUI();
   syncMemoUI();
   syncImageDriveUI();
@@ -760,7 +826,6 @@ async function boot() {
       showAuthGate(true, message);
     }
   });
-  signOutBtn?.addEventListener('click', () => HandbookCloud.signOut());
 
   if (window.HandbookCloud?.isEnabled()) {
     HandbookCloud.init();
@@ -779,7 +844,6 @@ async function boot() {
       }
       showAuthGate(false);
       updateCloudUserBar(user);
-      setCloudHint('클라우드 저장');
       if (appStarted) return;
       appStarted = true;
       await startApp();
@@ -802,12 +866,7 @@ function saveLocal() {
   manualData.role = activeTab;
   localStorage.setItem(currentTab().storageKey, JSON.stringify(manualData));
   if (applyingRemote) return;
-  if (isCloudReady()) {
-    setCloudHint('동기화 중...');
-    HandbookCloud.scheduleSave(activeTab, manualData);
-    clearTimeout(cloudHintTimer);
-    cloudHintTimer = setTimeout(() => setCloudHint('클라우드 저장'), 1000);
-  }
+  if (isCloudReady()) HandbookCloud.scheduleSave(activeTab, manualData);
 }
 
 function saveOpenState() {
@@ -938,6 +997,116 @@ function ongoingIconSvg() {
   `;
 }
 
+function formatDateValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function daysUntilDeadline(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function formatDaysLeft(dateStr) {
+  const days = daysUntilDeadline(dateStr);
+  if (days === null) return '';
+  if (days < 0) return `${Math.abs(days)} DAYS OVERDUE`;
+  return `${days} DAYS LEFT`;
+}
+
+function renderDeadlineBadge(block) {
+  const label = formatDaysLeft(block.deadline);
+  if (!label) return '';
+  const overdue = daysUntilDeadline(block.deadline) < 0;
+  return `<span class="deadline-left ${overdue ? 'is-overdue' : ''}">${escapeHtml(label)}</span>`;
+}
+
+function calendarIconSvg() {
+  return `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M8 3.5v3M16 3.5v3M3.5 10h17" />
+    </svg>
+  `;
+}
+
+function closeDeadlinePopovers(exceptWrap = null) {
+  document.querySelectorAll('.deadline-wrap.is-open').forEach(wrap => {
+    if (wrap !== exceptWrap) wrap.classList.remove('is-open');
+  });
+}
+
+function createDeadlineCalendar(block, onPicked) {
+  const wrap = document.createElement('div');
+  wrap.className = 'deadline-panel';
+  const start = block.deadline ? new Date(`${block.deadline}T00:00:00`) : new Date();
+  let viewYear = start.getFullYear();
+  let viewMonth = start.getMonth();
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
+  const paint = () => {
+    const first = new Date(viewYear, viewMonth, 1);
+    const startWeekday = first.getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const today = formatDateValue(new Date());
+    const cells = [];
+    for (let i = 0; i < startWeekday; i += 1) cells.push('<span class="deadline-day is-empty"></span>');
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const value = formatDateValue(new Date(viewYear, viewMonth, day));
+      const selected = value === block.deadline ? ' is-selected' : '';
+      const isToday = value === today ? ' is-today' : '';
+      cells.push(`<button type="button" class="deadline-day${selected}${isToday}" data-date="${value}">${day}</button>`);
+    }
+    wrap.innerHTML = `
+      <div class="deadline-head">
+        <span class="deadline-label">마감 일정</span>
+        ${block.deadline ? `<button type="button" class="deadline-clear">지우기</button>` : ''}
+      </div>
+      <div class="deadline-nav">
+        <button type="button" class="deadline-nav-btn" data-dir="-1" aria-label="이전 달">‹</button>
+        <strong>${viewYear}. ${viewMonth + 1}</strong>
+        <button type="button" class="deadline-nav-btn" data-dir="1" aria-label="다음 달">›</button>
+      </div>
+      <div class="deadline-week">${weekdays.map(name => `<span>${name}</span>`).join('')}</div>
+      <div class="deadline-grid">${cells.join('')}</div>
+    `;
+    wrap.querySelectorAll('.deadline-nav-btn').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        viewMonth += Number(button.dataset.dir);
+        if (viewMonth < 0) {
+          viewMonth = 11;
+          viewYear -= 1;
+        } else if (viewMonth > 11) {
+          viewMonth = 0;
+          viewYear += 1;
+        }
+        paint();
+      });
+    });
+    wrap.querySelector('.deadline-clear')?.addEventListener('click', event => {
+      event.stopPropagation();
+      block.deadline = '';
+      saveLocal();
+      if (typeof onPicked === 'function') onPicked();
+    });
+    wrap.querySelectorAll('.deadline-day[data-date]').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        block.deadline = button.dataset.date;
+        saveLocal();
+        if (typeof onPicked === 'function') onPicked();
+      });
+    });
+  };
+  paint();
+  wrap.addEventListener('click', event => event.stopPropagation());
+  return wrap;
+}
+
 function createWorkBlockElement(block, categoryId, blockIndex, keyword) {
   const visibleTasks = (block.tasks || []).filter(task => matchesSearch(task, block, keyword));
   if (keyword && visibleTasks.length === 0 && !(block.summary || '').toLowerCase().includes(keyword.toLowerCase()) && !(block.label || '').toLowerCase().includes(keyword.toLowerCase())) {
@@ -970,6 +1139,7 @@ function createWorkBlockElement(block, categoryId, blockIndex, keyword) {
           <label class="time-done-check" title="완료">
             <input type="checkbox" class="time-done-input" ${block.done ? 'checked' : ''} />
           </label>
+          ${renderDeadlineBadge(block)}
           ${block.hasLeaveCheck ? `
           <label class="time-leave-check">
             <span class="time-leave-label">퇴근전 한번더</span>
@@ -983,6 +1153,9 @@ function createWorkBlockElement(block, categoryId, blockIndex, keyword) {
       </span>
     </div>
     ${renderCollapsedLinkIcons(collapsedLinks)}
+    <div class="deadline-wrap">
+      <button type="button" class="deadline-icon-btn ${block.deadline ? 'has-date' : ''}" aria-label="마감 일정">${calendarIconSvg()}</button>
+    </div>
     <button class="time-toggle" type="button">${isOpen ? '접기' : '펴기'}</button>
   `;
 
@@ -1029,6 +1202,20 @@ function createWorkBlockElement(block, categoryId, blockIndex, keyword) {
   });
   header.querySelectorAll('.collapsed-link-icon').forEach(link => {
     link.addEventListener('click', event => event.stopPropagation());
+  });
+  const deadlineWrap = header.querySelector('.deadline-wrap');
+  const deadlineBtn = header.querySelector('.deadline-icon-btn');
+  deadlineBtn?.addEventListener('click', event => {
+    event.stopPropagation();
+    const opening = !deadlineWrap.classList.contains('is-open');
+    closeDeadlinePopovers();
+    if (!opening) return;
+    deadlineWrap.querySelector('.deadline-panel')?.remove();
+    deadlineWrap.appendChild(createDeadlineCalendar(block, () => {
+      closeDeadlinePopovers();
+      render();
+    }));
+    deadlineWrap.classList.add('is-open');
   });
   header.querySelector('.time-toggle').addEventListener('click', () => {
     if (openBlocks.has(block.id)) openBlocks.delete(block.id);
@@ -1122,6 +1309,7 @@ function addWorkItem(categoryId) {
     done: false,
     hasLeaveCheck: false,
     leaveRecheck: false,
+    deadline: '',
     tasks: [createEmptyTask('')]
   });
   openBlocks.add(id);
@@ -1739,6 +1927,17 @@ editToggle.addEventListener('click', () => {
 });
 
 searchInput.addEventListener('input', render);
+document.addEventListener('click', () => closeDeadlinePopovers());
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeDeadlinePopovers();
+});
+let announceSaveTimer = null;
+announceInput?.addEventListener('input', () => {
+  const text = announceInput.value;
+  announceBox?.classList.toggle('has-text', Boolean(text.trim()));
+  clearTimeout(announceSaveTimer);
+  announceSaveTimer = setTimeout(() => saveAnnounce(text), 250);
+});
 let memoSaveTimer = null;
 let fitTextareaTimer = null;
 memoInput?.addEventListener('input', () => {
@@ -1922,36 +2121,35 @@ function readStoredOpenBlocks(tabId) {
   }
 }
 
+function tabIds() {
+  return Object.keys(TABS);
+}
+
 function buildHandbookBundle() {
   saveLocal();
   saveOpenState();
+  const tabs = {};
+  const open = {};
+  tabIds().forEach(id => {
+    tabs[id] = readStoredTabData(id);
+    open[id] = readStoredOpenBlocks(id);
+  });
   return {
     version: 2,
     type: 'spoon-handbook-bundle',
     exportedAt: new Date().toISOString(),
     activeTab,
-    tabs: {
-      codi: readStoredTabData('codi'),
-      coach: readStoredTabData('coach')
-    },
-    open: {
-      codi: readStoredOpenBlocks('codi'),
-      coach: readStoredOpenBlocks('coach')
-    }
+    tabs,
+    open
   };
 }
 
 async function applyHandbookBundle(bundle) {
-  const codiData = normalizeManualData(bundle.tabs?.codi || emptyManualData());
-  const coachData = normalizeManualData(bundle.tabs?.coach || emptyManualData());
-  localStorage.setItem(TABS.codi.storageKey, JSON.stringify(codiData));
-  localStorage.setItem(TABS.coach.storageKey, JSON.stringify(coachData));
-  localStorage.setItem(TABS.codi.openKey, JSON.stringify(bundle.open?.codi || []));
-  localStorage.setItem(TABS.coach.openKey, JSON.stringify(bundle.open?.coach || []));
-
-  if (isCloudReady()) {
-    await HandbookCloud.saveTabNow('codi', codiData);
-    await HandbookCloud.saveTabNow('coach', coachData);
+  for (const id of tabIds()) {
+    const data = normalizeManualData(bundle.tabs?.[id] || emptyManualData());
+    localStorage.setItem(TABS[id].storageKey, JSON.stringify(data));
+    localStorage.setItem(TABS[id].openKey, JSON.stringify(bundle.open?.[id] || []));
+    if (isCloudReady()) await HandbookCloud.saveTabNow(id, data);
   }
 
   const nextTab = TABS[bundle.activeTab] ? bundle.activeTab : activeTab;
@@ -1973,7 +2171,7 @@ exportBtn.addEventListener('click', () => {
   a.download = `spoon-handbook-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('코디·코치 데이터를 저장했습니다.');
+  showToast('전체 탭 데이터를 저장했습니다.');
 });
 
 importInput.addEventListener('change', event => {
@@ -1985,7 +2183,7 @@ importInput.addEventListener('change', event => {
       const imported = JSON.parse(reader.result);
       if (imported?.type === 'spoon-handbook-bundle' && imported.tabs) {
         await applyHandbookBundle(imported);
-        showToast('코디·코치 데이터를 불러왔습니다.');
+        showToast('전체 탭 데이터를 불러왔습니다.');
         return;
       }
       if (!Array.isArray(imported.timeBlocks) && !Array.isArray(imported.workCategories)) throw new Error('Invalid format');
