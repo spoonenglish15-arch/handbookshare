@@ -93,6 +93,20 @@ body {
   font-size: 13px;
 }
 
+.auth-steps {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.auth-steps code {
+  font-size: 12px;
+}
+
 .topbar-main {
   display: flex;
   align-items: center;

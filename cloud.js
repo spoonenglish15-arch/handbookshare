@@ -1,9 +1,7 @@
 (function () {
   const SAVE_DELAY = 700;
   let app = null;
-  let auth = null;
   let db = null;
-  let authCallback = null;
   let saveTimer = null;
   let pendingTabId = '';
   let pendingData = null;
@@ -19,12 +17,6 @@
     return window.FIREBASE_CONFIG || {};
   }
 
-  function allowedEmails() {
-    return (window.FIREBASE_ALLOWED_EMAILS || [])
-      .map(email => String(email || '').trim().toLowerCase())
-      .filter(Boolean);
-  }
-
   function isEnabled() {
     const cfg = config();
     return Boolean(cfg.apiKey && cfg.projectId && window.firebase);
@@ -34,12 +26,6 @@
     return JSON.parse(JSON.stringify(data || {}));
   }
 
-  function isAllowed(email) {
-    const list = allowedEmails();
-    if (!list.length) return true;
-    return list.includes(String(email || '').trim().toLowerCase());
-  }
-
   function docRef(tabId) {
     return db.collection('handbook').doc(tabId);
   }
@@ -47,33 +33,8 @@
   function init() {
     if (!isEnabled() || app) return isEnabled();
     app = firebase.initializeApp(config());
-    auth = firebase.auth();
     db = firebase.firestore();
-    auth.onAuthStateChanged(user => {
-      if (authCallback) authCallback(user);
-    });
     return true;
-  }
-
-  function onAuth(callback) {
-    authCallback = callback;
-    if (auth) callback(auth.currentUser);
-  }
-
- function currentUser() {
-  return { email: '', displayName: 'Shared' };
-}
-
-async function signIn() {
-  return currentUser();
-}
-
-  async function signOut() {
-    stopWatch();
-    stopAnnounceWatch();
-    await flushSave();
-    await flushAnnounceSave();
-    await auth.signOut();
   }
 
   async function loadTab(tabId) {
@@ -84,11 +45,11 @@ async function signIn() {
   }
 
   async function saveTabNow(tabId, data) {
-    if (!isEnabled() || !currentUser() || !tabId || !data) return;
+    if (!isEnabled() || !tabId || !data) return;
     lastPushedAt = Date.now();
     const payload = cloneData(data);
     payload.updatedAtMs = lastPushedAt;
-    payload.updatedBy = currentUser().email || '';
+    payload.updatedBy = 'shared';
     payload.role = tabId;
     await docRef(tabId).set({
       payload,
@@ -98,7 +59,7 @@ async function signIn() {
   }
 
   function scheduleSave(tabId, data) {
-    if (!isEnabled() || !currentUser() || !tabId || !data) return;
+    if (!isEnabled() || !tabId || !data) return;
     pendingTabId = tabId;
     pendingData = cloneData(data);
     clearTimeout(saveTimer);
@@ -142,17 +103,17 @@ async function signIn() {
   }
 
   async function saveAnnounceNow(text) {
-    if (!isEnabled() || !currentUser()) return;
+    if (!isEnabled()) return;
     lastAnnouncePushedAt = Date.now();
     await docRef('announce').set({
       text: String(text || ''),
       updatedAtMs: lastAnnouncePushedAt,
-      updatedBy: currentUser().email || ''
+      updatedBy: 'shared'
     });
   }
 
   function scheduleAnnounceSave(text) {
-    if (!isEnabled() || !currentUser()) return;
+    if (!isEnabled()) return;
     pendingAnnounce = String(text || '');
     clearTimeout(announceTimer);
     announceTimer = setTimeout(() => {
@@ -170,7 +131,7 @@ async function signIn() {
 
   function subscribeAnnounce(onData) {
     stopAnnounceWatch();
-    if (!isEnabled() || !currentUser()) return () => {};
+    if (!isEnabled()) return () => {};
     announceUnsub = docRef('announce').onSnapshot(snap => {
       if (!snap.exists) return;
       const row = snap.data() || {};
@@ -184,7 +145,7 @@ async function signIn() {
 
   function subscribeTab(tabId, onData) {
     stopWatch();
-    if (!isEnabled() || !currentUser() || !tabId) return () => {};
+    if (!isEnabled() || !tabId) return () => {};
     unsubscribe = docRef(tabId).onSnapshot(snap => {
       if (!snap.exists) return;
       const row = snap.data() || {};
@@ -198,12 +159,7 @@ async function signIn() {
 
   window.HandbookCloud = {
     isEnabled,
-    isAllowed,
     init,
-    onAuth,
-    currentUser,
-    signIn,
-    signOut,
     loadTab,
     saveTabNow,
     scheduleSave,

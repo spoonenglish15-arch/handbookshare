@@ -91,11 +91,7 @@ const timeForm = document.getElementById('timeForm');
 const cancelTimeBtn = document.getElementById('cancelTimeBtn');
 const cloudUserBar = document.getElementById('cloudUserBar');
 const cloudUserEmail = document.getElementById('cloudUserEmail');
-const authGate = document.getElementById('authGate');
-const authError = document.getElementById('authError');
-const googleSignInBtn = document.getElementById('googleSignInBtn');
 let applyingRemote = false;
-let appStarted = false;
 function emptyManualData() {
   return {
     version: '1.0.0',
@@ -508,7 +504,23 @@ async function loadTabDataLocal(tabId, { useDefaultJson = false } = {}) {
   }
 }
 
-async function loadTabData(tabId, { useDefaultJson = false } = {}) {
+function hasHandbookContent(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (String(data.memo || '').trim()) return true;
+  if ((data.quickCopies || []).length) return true;
+  return (data.workCategories || []).some(category => (category.items || []).length);
+}
+
+function pickPreferredTabData(local, remote) {
+  if (!remote) return { data: local, upload: Boolean(local) };
+  const localHas = hasHandbookContent(local);
+  const remoteHas = hasHandbookContent(remote);
+  const localMs = Number(local?.updatedAtMs || 0);
+  const remoteMs = Number(remote?.updatedAtMs || 0);
+  if (localHas && !remoteHas) return { data: local, upload: true };
+  if (localHas && localMs > remoteMs) return { data: local, upload: true };
+  return { data: remote, upload: false };
+}
   window.HandbookCloud?.stopWatch?.();
   activeTab = tabId;
   const tab = TABS[tabId];
@@ -516,17 +528,15 @@ async function loadTabData(tabId, { useDefaultJson = false } = {}) {
   if (isCloudReady()) {
     try {
       const remote = await HandbookCloud.loadTab(tabId);
-      if (remote) {
-        manualData = normalizeManualData(remote);
-        localStorage.setItem(tab.storageKey, JSON.stringify(manualData));
-      } else {
-        await loadTabDataLocal(tabId, { useDefaultJson });
-        if (manualData) await HandbookCloud.saveTabNow(tabId, manualData);
-      }
+      await loadTabDataLocal(tabId, { useDefaultJson });
+      const chosen = pickPreferredTabData(manualData, remote);
+      manualData = normalizeManualData(chosen.data);
+      localStorage.setItem(tab.storageKey, JSON.stringify(manualData));
+      if (chosen.upload && manualData) await HandbookCloud.saveTabNow(tabId, manualData);
     } catch (error) {
       console.error(error);
       await loadTabDataLocal(tabId, { useDefaultJson });
-      showToast('클라우드 불러오기 실패 · 로컬 데이터를 엽니다.');
+      showToast('클라우드 불러오기 실패 · 이 브라우저 내용을 유지합니다.');
     }
     loadOpenBlocks();
     watchCurrentTab();
@@ -702,22 +712,11 @@ async function switchTab(tabId) {
 }
 
 function isCloudReady() {
-  return Boolean(window.HandbookCloud?.isEnabled() && HandbookCloud.currentUser());
+  return Boolean(window.HandbookCloud?.isEnabled());
 }
 
-function showAuthGate(visible, message = '') {
-  if (!authGate) return;
-  authGate.hidden = !visible;
-  if (authError) {
-    authError.hidden = !message;
-    authError.textContent = message || '';
-  }
-}
-
-function updateCloudUserBar(user) {
-  if (!cloudUserBar) return;
-  cloudUserBar.hidden = !user;
-  if (cloudUserEmail) cloudUserEmail.textContent = user?.email || '';
+function updateCloudUserBar() {
+  if (cloudUserBar) cloudUserBar.hidden = true;
 }
 
 function applyRemoteTabData(data) {
@@ -769,7 +768,8 @@ async function loadAnnounce() {
   if (isCloudReady()) {
     try {
       const remote = await HandbookCloud.loadAnnounce();
-      if (typeof remote === 'string') text = remote;
+      if (typeof remote === 'string' && remote.trim()) text = remote;
+      else if (text.trim()) await HandbookCloud.saveAnnounceNow(text);
     } catch (error) {
       console.error(error);
     }
@@ -815,43 +815,8 @@ async function startApp() {
 async function boot() {
   applyTabOrder();
   bindRoleTabDrag();
-  googleSignInBtn?.addEventListener('click', async () => {
-    try {
-      showAuthGate(true, '');
-      await HandbookCloud.signIn();
-    } catch (error) {
-      const message = error?.code === 'auth/popup-closed-by-user'
-        ? '로그인이 취소되었습니다.'
-        : (error?.message || '로그인에 실패했습니다.');
-      showAuthGate(true, message);
-    }
-  });
-
-  if (window.HandbookCloud?.isEnabled()) {
-    HandbookCloud.init();
-    showAuthGate(true);
-    HandbookCloud.onAuth(async user => {
-      if (!user) {
-        appStarted = false;
-        updateCloudUserBar(null);
-        showAuthGate(true);
-        return;
-      }
-      if (!HandbookCloud.isAllowed(user.email)) {
-        showAuthGate(true, '허용된 팀 계정이 아닙니다.');
-        await HandbookCloud.signOut();
-        return;
-      }
-      showAuthGate(false);
-      updateCloudUserBar(user);
-      if (appStarted) return;
-      appStarted = true;
-      await startApp();
-    });
-    return;
-  }
-
-  if (cloudUserBar) cloudUserBar.hidden = true;
+  updateCloudUserBar();
+  if (window.HandbookCloud?.isEnabled()) HandbookCloud.init();
   await startApp();
 }
 
@@ -2140,7 +2105,8 @@ function buildHandbookBundle() {
     exportedAt: new Date().toISOString(),
     activeTab,
     tabs,
-    open
+    open,
+    announce: localStorage.getItem(ANNOUNCE_KEY) || announceInput?.value || ''
   };
 }
 
@@ -2150,6 +2116,10 @@ async function applyHandbookBundle(bundle) {
     localStorage.setItem(TABS[id].storageKey, JSON.stringify(data));
     localStorage.setItem(TABS[id].openKey, JSON.stringify(bundle.open?.[id] || []));
     if (isCloudReady()) await HandbookCloud.saveTabNow(id, data);
+  }
+
+  if (typeof bundle.announce === 'string') {
+    saveAnnounce(bundle.announce);
   }
 
   const nextTab = TABS[bundle.activeTab] ? bundle.activeTab : activeTab;
