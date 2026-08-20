@@ -1408,6 +1408,12 @@ function sanitizeRichHtml(value = '') {
       clean.dataset.richImage = '';
       const width = Math.max(120, Math.min(1200, Number.parseInt(node.dataset.width, 10) || 480));
       clean.dataset.width = String(width);
+      const imageId = String(node.dataset.imageId || '').replace(/[^\w-]/g, '').slice(0, 200);
+      if (imageId) {
+        clean.dataset.imageId = imageId;
+        clean.dataset.alt = String(node.dataset.alt || node.querySelector('img')?.alt || '업무 설명 이미지').slice(0, 200);
+        return clean;
+      }
     }
     [...node.childNodes].forEach(child => clean.appendChild(cleanNode(child)));
     return clean;
@@ -1416,7 +1422,7 @@ function sanitizeRichHtml(value = '') {
   const output = document.createElement('div');
   [...source.content.childNodes].forEach(node => output.appendChild(cleanNode(node)));
   output.querySelectorAll('figure').forEach(figure => {
-    if (!figure.querySelector('img')) figure.remove();
+    if (!figure.dataset.imageId && !figure.querySelector('img')) figure.remove();
   });
   return output.innerHTML.trim();
 }
@@ -1468,13 +1474,55 @@ function insertPlainTextAtCaret(editor, text) {
   selection.addRange(range);
 }
 
+async function compressImageForFirestore(file) {
+  const MAX_BYTES = 700 * 1024;
+  if (!file || !String(file.type || '').startsWith('image/')) {
+    throw new Error('이미지 파일만 첨부할 수 있습니다.');
+  }
+  if (file.size > 30 * 1024 * 1024) {
+    throw new Error('원본 이미지는 30MB 이하만 첨부할 수 있습니다.');
+  }
+
+  const bitmap = await createImageBitmap(file);
+  let maxDimension = 1920;
+  let quality = 0.9;
+  let result = null;
+
+  try {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext('2d', { alpha: false });
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      result = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+      if (!result) throw new Error('이 브라우저에서 이미지 압축을 지원하지 않습니다.');
+      if (result.size <= MAX_BYTES) return result;
+
+      if (quality > 0.5) {
+        quality = Math.max(0.5, quality - 0.1);
+      } else {
+        maxDimension = Math.max(480, Math.round(maxDimension * 0.82));
+        quality = 0.82;
+      }
+    }
+  } finally {
+    bitmap.close?.();
+  }
+
+  throw new Error(`이미지를 700KB 이하로 압축하지 못했습니다. (${Math.round((result?.size || 0) / 1024)}KB)`);
+}
+
 function bindRichDescriptionEditor(editor, fileInput, task) {
   const field = editor.closest('.rich-description-field');
   const status = field.querySelector('.rich-upload-status');
   let saveTimer = null;
 
   const updateEmptyState = () => {
-    const hasContent = Boolean(editor.textContent.trim() || editor.querySelector('img'));
+    const hasContent = Boolean(editor.textContent.trim() || editor.querySelector('figure[data-image-id], img'));
     editor.classList.toggle('is-empty', !hasContent);
   };
 
@@ -1509,10 +1557,15 @@ function bindRichDescriptionEditor(editor, fileInput, task) {
     remove.setAttribute('aria-label', '이미지 삭제');
     remove.textContent = '×';
     remove.addEventListener('click', () => {
+      const imageId = figure.dataset.imageId;
+      if (figure.dataset.objectUrl) URL.revokeObjectURL(figure.dataset.objectUrl);
       figure.remove();
       save();
       editor.focus();
       showToast('이미지를 삭제했습니다.');
+      if (imageId) {
+        window.HandbookCloud?.deleteTaskImage?.(imageId).catch(error => console.error(error));
+      }
     });
     figure.appendChild(remove);
 
@@ -1527,6 +1580,30 @@ function bindRichDescriptionEditor(editor, fileInput, task) {
       observer.observe(figure);
     }
     figure.addEventListener('pointerup', save);
+  };
+
+  const hydrateFigure = async figure => {
+    const imageId = figure?.dataset.imageId;
+    if (!imageId || figure.querySelector('img') || figure.classList.contains('is-uploading')) return;
+    const loading = document.createElement('span');
+    loading.className = 'rich-image-loading';
+    loading.textContent = '이미지 불러오는 중…';
+    figure.classList.add('is-uploading');
+    figure.prepend(loading);
+    try {
+      const stored = await window.HandbookCloud?.loadTaskImage?.(imageId);
+      if (!stored?.blob) throw new Error('저장된 이미지를 찾을 수 없습니다.');
+      const objectUrl = URL.createObjectURL(stored.blob);
+      const image = document.createElement('img');
+      image.src = objectUrl;
+      image.alt = figure.dataset.alt || stored.fileName || '업무 설명 이미지';
+      figure.dataset.objectUrl = objectUrl;
+      loading.replaceWith(image);
+      figure.classList.remove('is-uploading');
+    } catch (error) {
+      console.error(error);
+      loading.textContent = '이미지를 불러오지 못했습니다.';
+    }
   };
 
   const createUploadPlaceholder = () => {
@@ -1547,19 +1624,23 @@ function bindRichDescriptionEditor(editor, fileInput, task) {
   const uploadOne = async file => {
     const { figure, loading } = createUploadPlaceholder();
     try {
-      const uploaded = await window.HandbookCloud?.uploadTaskImage?.(
-        file,
+      loading.textContent = '이미지 압축 중…';
+      const compressed = await compressImageForFirestore(file);
+      loading.textContent = `Firestore에 저장 중… ${Math.round(compressed.size / 1024)}KB`;
+      const uploaded = await window.HandbookCloud?.saveTaskImage?.(
+        compressed,
         activeTab,
         task.id,
-        percent => {
-          loading.textContent = `이미지 업로드 중… ${percent}%`;
-        }
+        file.name
       );
-      if (!uploaded?.url) throw new Error('이미지 업로드 주소를 받지 못했습니다.');
+      if (!uploaded?.id) throw new Error('이미지 저장 ID를 받지 못했습니다.');
+      const objectUrl = URL.createObjectURL(compressed);
       const image = document.createElement('img');
-      image.src = uploaded.url;
+      image.src = objectUrl;
       image.alt = file.name || '업무 설명 이미지';
-      image.loading = 'lazy';
+      figure.dataset.imageId = uploaded.id;
+      figure.dataset.alt = image.alt;
+      figure.dataset.objectUrl = objectUrl;
       loading.replaceWith(image);
       figure.classList.remove('is-uploading');
       enhanceFigure(figure);
@@ -1568,7 +1649,7 @@ function bindRichDescriptionEditor(editor, fileInput, task) {
     } catch (error) {
       figure.remove();
       console.error(error);
-      alert(`${error?.message || '이미지 업로드에 실패했습니다.'}\nFirebase Storage가 활성화되어 있는지 확인해 주세요.`);
+      alert(error?.message || '이미지를 Firestore에 저장하지 못했습니다.');
       return false;
     }
   };
@@ -1576,7 +1657,7 @@ function bindRichDescriptionEditor(editor, fileInput, task) {
   const uploadImages = async files => {
     const images = [...files].filter(file => String(file.type || '').startsWith('image/'));
     if (!images.length) return;
-    status.textContent = `${images.length}개 이미지 업로드 중…`;
+    status.textContent = `${images.length}개 이미지 압축·저장 중…`;
     const results = await Promise.all(images.map(uploadOne));
     status.textContent = '';
     fileInput.value = '';
@@ -1584,7 +1665,10 @@ function bindRichDescriptionEditor(editor, fileInput, task) {
   };
 
   editor.innerHTML = richDescriptionHtml(task);
-  editor.querySelectorAll('figure[data-rich-image]').forEach(enhanceFigure);
+  editor.querySelectorAll('figure[data-rich-image]').forEach(figure => {
+    enhanceFigure(figure);
+    hydrateFigure(figure);
+  });
   updateEmptyState();
 
   editor.addEventListener('input', scheduleSave);
