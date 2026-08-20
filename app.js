@@ -1368,6 +1368,258 @@ function render() {
   fitVisibleTextareas();
 }
 
+function plainTextToRichHtml(value = '') {
+  const text = String(value || '').replace(/\r\n?/g, '\n');
+  if (!text) return '';
+  return text.split('\n').map(line => `<div>${escapeHtml(line) || '<br>'}</div>`).join('');
+}
+
+function sanitizeRichHtml(value = '') {
+  const source = document.createElement('template');
+  source.innerHTML = String(value || '');
+  const allowed = new Set(['DIV', 'P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'FIGURE', 'IMG']);
+
+  const cleanNode = node => {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || '');
+    if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+    if (node.classList.contains('rich-image-remove') || node.classList.contains('rich-image-loading')) {
+      return document.createDocumentFragment();
+    }
+
+    const tag = node.tagName.toUpperCase();
+    if (!allowed.has(tag)) {
+      const fragment = document.createDocumentFragment();
+      [...node.childNodes].forEach(child => fragment.appendChild(cleanNode(child)));
+      return fragment;
+    }
+
+    if (tag === 'IMG') {
+      const src = String(node.getAttribute('src') || '');
+      if (!/^https:\/\//i.test(src)) return document.createDocumentFragment();
+      const image = document.createElement('img');
+      image.src = src;
+      image.alt = String(node.getAttribute('alt') || '업무 설명 이미지').slice(0, 200);
+      image.loading = 'lazy';
+      return image;
+    }
+
+    const clean = document.createElement(tag.toLowerCase());
+    if (tag === 'FIGURE') {
+      clean.dataset.richImage = '';
+      const width = Math.max(120, Math.min(1200, Number.parseInt(node.dataset.width, 10) || 480));
+      clean.dataset.width = String(width);
+    }
+    [...node.childNodes].forEach(child => clean.appendChild(cleanNode(child)));
+    return clean;
+  };
+
+  const output = document.createElement('div');
+  [...source.content.childNodes].forEach(node => output.appendChild(cleanNode(node)));
+  output.querySelectorAll('figure').forEach(figure => {
+    if (!figure.querySelector('img')) figure.remove();
+  });
+  return output.innerHTML.trim();
+}
+
+function richDescriptionHtml(task) {
+  return sanitizeRichHtml(task.descriptionHtml || plainTextToRichHtml(task.description || ''));
+}
+
+function setCaretAfterNode(editor, node) {
+  const spacer = document.createElement('div');
+  spacer.appendChild(document.createElement('br'));
+  node.after(spacer);
+  const range = document.createRange();
+  range.setStart(spacer, 0);
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  editor.focus();
+}
+
+function insertNodeAtEditorCaret(editor, node) {
+  const selection = window.getSelection();
+  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+  if (range && editor.contains(range.commonAncestorContainer)) {
+    range.deleteContents();
+    range.insertNode(node);
+  } else {
+    editor.appendChild(node);
+  }
+  setCaretAfterNode(editor, node);
+}
+
+function insertPlainTextAtCaret(editor, text) {
+  editor.focus();
+  if (document.execCommand('insertText', false, text)) return;
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) {
+    editor.appendChild(document.createTextNode(text));
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function bindRichDescriptionEditor(editor, fileInput, task) {
+  const field = editor.closest('.rich-description-field');
+  const status = field.querySelector('.rich-upload-status');
+  let saveTimer = null;
+
+  const updateEmptyState = () => {
+    const hasContent = Boolean(editor.textContent.trim() || editor.querySelector('img'));
+    editor.classList.toggle('is-empty', !hasContent);
+  };
+
+  const save = () => {
+    clearTimeout(saveTimer);
+    task.descriptionHtml = sanitizeRichHtml(editor.innerHTML);
+    const plain = document.createElement('div');
+    plain.innerHTML = task.descriptionHtml;
+    task.description = plain.textContent.replace(/\u00a0/g, ' ').trim();
+    updateEmptyState();
+    saveLocal();
+  };
+
+  const scheduleSave = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 250);
+    updateEmptyState();
+  };
+
+  const enhanceFigure = figure => {
+    if (!figure || figure.dataset.enhanced === 'true') return;
+    figure.dataset.enhanced = 'true';
+    figure.classList.add('rich-image-frame');
+    figure.contentEditable = 'false';
+    const width = Math.max(120, Math.min(editor.clientWidth || 1200, Number(figure.dataset.width) || 480));
+    figure.style.width = `${width}px`;
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'rich-image-remove';
+    remove.title = '이미지 삭제';
+    remove.setAttribute('aria-label', '이미지 삭제');
+    remove.textContent = '×';
+    remove.addEventListener('click', () => {
+      figure.remove();
+      save();
+      editor.focus();
+      showToast('이미지를 삭제했습니다.');
+    });
+    figure.appendChild(remove);
+
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(() => {
+        if (!figure.isConnected) {
+          observer.disconnect();
+          return;
+        }
+        figure.dataset.width = String(Math.round(figure.getBoundingClientRect().width));
+      });
+      observer.observe(figure);
+    }
+    figure.addEventListener('pointerup', save);
+  };
+
+  const createUploadPlaceholder = () => {
+    const figure = document.createElement('figure');
+    figure.dataset.richImage = '';
+    figure.dataset.width = String(Math.min(480, Math.max(220, editor.clientWidth - 24)));
+    figure.className = 'rich-image-frame is-uploading';
+    figure.contentEditable = 'false';
+    figure.style.width = `${figure.dataset.width}px`;
+    const loading = document.createElement('span');
+    loading.className = 'rich-image-loading';
+    loading.textContent = '이미지 업로드 중…';
+    figure.appendChild(loading);
+    insertNodeAtEditorCaret(editor, figure);
+    return { figure, loading };
+  };
+
+  const uploadOne = async file => {
+    const { figure, loading } = createUploadPlaceholder();
+    try {
+      const uploaded = await window.HandbookCloud?.uploadTaskImage?.(
+        file,
+        activeTab,
+        task.id,
+        percent => {
+          loading.textContent = `이미지 업로드 중… ${percent}%`;
+        }
+      );
+      if (!uploaded?.url) throw new Error('이미지 업로드 주소를 받지 못했습니다.');
+      const image = document.createElement('img');
+      image.src = uploaded.url;
+      image.alt = file.name || '업무 설명 이미지';
+      image.loading = 'lazy';
+      loading.replaceWith(image);
+      figure.classList.remove('is-uploading');
+      enhanceFigure(figure);
+      save();
+      return true;
+    } catch (error) {
+      figure.remove();
+      console.error(error);
+      alert(`${error?.message || '이미지 업로드에 실패했습니다.'}\nFirebase Storage가 활성화되어 있는지 확인해 주세요.`);
+      return false;
+    }
+  };
+
+  const uploadImages = async files => {
+    const images = [...files].filter(file => String(file.type || '').startsWith('image/'));
+    if (!images.length) return;
+    status.textContent = `${images.length}개 이미지 업로드 중…`;
+    const results = await Promise.all(images.map(uploadOne));
+    status.textContent = '';
+    fileInput.value = '';
+    if (results.some(Boolean)) showToast('이미지를 저장했습니다.');
+  };
+
+  editor.innerHTML = richDescriptionHtml(task);
+  editor.querySelectorAll('figure[data-rich-image]').forEach(enhanceFigure);
+  updateEmptyState();
+
+  editor.addEventListener('input', scheduleSave);
+  editor.addEventListener('blur', save);
+  editor.addEventListener('paste', event => {
+    const imageFiles = [...(event.clipboardData?.items || [])]
+      .filter(item => item.kind === 'file' && String(item.type || '').startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean);
+    event.preventDefault();
+    if (imageFiles.length) {
+      uploadImages(imageFiles);
+      return;
+    }
+    insertPlainTextAtCaret(editor, event.clipboardData?.getData('text/plain') || '');
+    scheduleSave();
+  });
+  editor.addEventListener('dragover', event => {
+    if ([...(event.dataTransfer?.items || [])].some(item => String(item.type || '').startsWith('image/'))) {
+      event.preventDefault();
+      editor.classList.add('is-dragging');
+    }
+  });
+  editor.addEventListener('dragleave', () => editor.classList.remove('is-dragging'));
+  editor.addEventListener('drop', event => {
+    editor.classList.remove('is-dragging');
+    const files = [...(event.dataTransfer?.files || [])].filter(file => String(file.type || '').startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    uploadImages(files);
+  });
+  fileInput.addEventListener('change', () => uploadImages(fileInput.files || []));
+  field.querySelector('.rich-image-add').addEventListener('click', () => fileInput.click());
+}
+
 function bindTaskField(element, task, field) {
   const save = () => {
     task[field] = element.value.trim();
@@ -1386,9 +1638,15 @@ function renderTask(timeId, task) {
   card.dataset.taskId = task.id;
 
   card.innerHTML = `
-    <label class="inline-field">업무 설명
-      <textarea data-field="description" rows="2" placeholder="업무 설명을 입력하세요">${escapeHtml(task.description || '')}</textarea>
-    </label>
+    <div class="inline-field rich-description-field">
+      <div class="rich-description-header">
+        <span class="field-label">업무 설명</span>
+        <button type="button" class="rich-image-add">+ 이미지</button>
+        <input class="rich-image-input" type="file" accept="image/*" multiple />
+        <span class="rich-upload-status" role="status"></span>
+      </div>
+      <div class="rich-description-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="업무 설명을 입력하거나 캡처 이미지를 붙여넣으세요"></div>
+    </div>
     <div class="inline-field links-field">
       <span class="field-label">관련 링크</span>
       <div class="link-box">${renderLinkChips(task.links) || '<p class="empty-inline">등록된 링크가 없습니다.</p>'}</div>
@@ -1398,6 +1656,12 @@ function renderTask(timeId, task) {
       </div>
     </div>
   `;
+
+  bindRichDescriptionEditor(
+    card.querySelector('.rich-description-editor'),
+    card.querySelector('.rich-image-input'),
+    task
+  );
 
   const refreshLinkBox = () => {
     const box = card.querySelector('.link-box');
@@ -1984,12 +2248,14 @@ taskForm.addEventListener('submit', event => {
   if (!Array.isArray(block.tasks)) block.tasks = [];
 
   const existing = mode === 'edit' ? block.tasks.find(task => task.id === taskId) : null;
+  const description = document.getElementById('taskDescription').value.trim();
 
   const nextTask = {
     id: mode === 'add' ? uid('task') : taskId,
     title,
     owner: document.getElementById('taskOwner').value.trim(),
-    description: document.getElementById('taskDescription').value.trim(),
+    description,
+    descriptionHtml: plainTextToRichHtml(description),
     notes: document.getElementById('taskNotes').value.trim(),
     checklist: existing?.checklist || [],
     phrases: parseLines(document.getElementById('taskPhrases').value),

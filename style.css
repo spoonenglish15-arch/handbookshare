@@ -350,14 +350,6 @@ button, .file-label {
   font-size: 11px;
   color: #b7a792;
 }
-.share-status {
-  margin-left: 8px;
-  font-weight: 700;
-  color: #b45309;
-}
-.share-status.is-shared {
-  color: #16a34a;
-}
 
 .notepad-input {
   --memo-font-size: 14px;
@@ -1212,6 +1204,130 @@ button, .file-label {
 }
 
 .inline-field small { color: var(--muted); }
+
+.rich-description-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rich-description-header .field-label {
+  margin-right: auto;
+}
+
+.rich-image-add {
+  padding: 5px 9px;
+  border: 1px solid #e0d2bf;
+  border-radius: 9px;
+  background: #f8f2e9;
+  color: #6b5b45;
+  font-size: 12px;
+}
+
+.rich-image-input {
+  display: none;
+}
+
+.rich-upload-status {
+  min-width: 0;
+  color: #8a7d6b;
+  font-size: 12px;
+}
+
+.rich-description-editor {
+  width: 100%;
+  min-height: 90px;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid #e8e0d4;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  outline: none;
+}
+
+.rich-description-editor:focus {
+  border-color: #cbb89c;
+  box-shadow: 0 0 0 3px rgba(184, 159, 120, .14);
+}
+
+.rich-description-editor.is-empty::before {
+  content: attr(data-placeholder);
+  color: #aaa092;
+  pointer-events: none;
+}
+
+.rich-description-editor.is-dragging {
+  border-color: #9f825d;
+  background: #fdf9f3;
+}
+
+.rich-description-editor div,
+.rich-description-editor p {
+  margin: 0 0 4px;
+}
+
+.rich-image-frame {
+  position: relative;
+  display: block;
+  width: 480px;
+  max-width: 100%;
+  min-width: 120px;
+  min-height: 80px;
+  margin: 10px 0;
+  overflow: hidden;
+  resize: horizontal;
+  border: 1px solid #e5dacb;
+  border-radius: 12px;
+  background: #f7f3ed;
+  line-height: 0;
+}
+
+.rich-image-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+
+.rich-image-frame.is-uploading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  resize: none;
+}
+
+.rich-image-loading {
+  color: #8a7d6b;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rich-image-remove {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 50%;
+  background: rgba(49, 41, 32, .76);
+  color: #fff;
+  font-size: 20px;
+  line-height: 22px;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.rich-image-frame:hover .rich-image-remove,
+.rich-image-frame:focus-within .rich-image-remove {
+  opacity: 1;
+}
 
 .checklist {
   display: grid;

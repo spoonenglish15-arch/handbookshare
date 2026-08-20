@@ -2,6 +2,7 @@
   const SAVE_DELAY = 700;
   let app = null;
   let db = null;
+  let storage = null;
   let saveTimer = null;
   let pendingTabId = '';
   let pendingData = null;
@@ -34,7 +35,57 @@
     if (!isEnabled() || app) return isEnabled();
     app = firebase.initializeApp(config());
     db = firebase.firestore();
+    if (typeof firebase.storage === 'function') storage = firebase.storage();
     return true;
+  }
+
+  function isStorageEnabled() {
+    return Boolean(isEnabled() && typeof firebase.storage === 'function' && config().storageBucket);
+  }
+
+  function safeFileName(name) {
+    const cleaned = String(name || 'image')
+      .normalize('NFKD')
+      .replace(/[^\w.-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return cleaned || 'image';
+  }
+
+  async function uploadTaskImage(file, tabId, taskId, onProgress) {
+    if (!file || !String(file.type || '').startsWith('image/')) {
+      throw new Error('이미지 파일만 업로드할 수 있습니다.');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('이미지는 10MB 이하만 업로드할 수 있습니다.');
+    }
+    if (!app) init();
+    if (!isStorageEnabled() || !storage) {
+      throw new Error('Firebase Storage가 연결되지 않았습니다.');
+    }
+
+    const role = String(tabId || 'shared').replace(/[^\w-]/g, '');
+    const task = String(taskId || 'task').replace(/[^\w-]/g, '');
+    const path = `handbook-images/${role}/${task}/${Date.now()}-${safeFileName(file.name)}`;
+    const ref = storage.ref().child(path);
+    const upload = ref.put(file, {
+      contentType: file.type,
+      customMetadata: { role, taskId: task }
+    });
+
+    if (typeof onProgress === 'function') {
+      upload.on('state_changed', snapshot => {
+        const percent = snapshot.totalBytes
+          ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+          : 0;
+        onProgress(percent);
+      });
+    }
+
+    const snapshot = await upload;
+    return {
+      url: await snapshot.ref.getDownloadURL(),
+      path
+    };
   }
 
   async function loadTab(tabId) {
@@ -159,7 +210,9 @@
 
   window.HandbookCloud = {
     isEnabled,
+    isStorageEnabled,
     init,
+    uploadTaskImage,
     loadTab,
     saveTabNow,
     scheduleSave,
