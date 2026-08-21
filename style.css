@@ -395,6 +395,48 @@ body {
   letter-spacing: 0.02em;
 }
 
+.new-project-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 1px dashed #c9b089;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 82%, var(--accent-soft));
+  color: var(--theme-strong);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.new-project-btn:hover {
+  border-style: solid;
+  background: var(--theme-soft);
+}
+
+.new-project-btn:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.new-project-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid currentColor;
+  border-radius: 9px;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   font-size: 12px;
@@ -846,22 +888,6 @@ button, .file-label {
 .group-empty {
   border: 1px dashed #e8e0d4;
   border-radius: 14px;
-  background: #fff;
-}
-
-.ongoing-icon {
-  display: block;
-  color: #b89f78;
-}
-
-.ongoing-block .mini-clock-wrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid #e8e0d4;
-  border-radius: 50%;
   background: #fff;
 }
 
@@ -2047,6 +2073,7 @@ html[data-theme]:not([data-theme="default"]) :is(
 
 html[data-theme]:not([data-theme="default"]) :is(
   .role-tab.is-active,
+  .new-project-btn,
   .memo-font-btn,
   .time-toggle,
   .rich-image-add,
@@ -2104,7 +2131,6 @@ html[data-theme="dark"] :is(
   .group-empty,
   .time-block,
   .mini-clock-wrap,
-  .ongoing-block .mini-clock-wrap,
   .task-card,
   .check-item,
   .phrase,
@@ -2122,6 +2148,7 @@ html[data-theme="dark"] :is(
 
 html[data-theme="dark"] :is(
   .role-tab,
+  .new-project-btn,
   .role-tab-icon,
   .role-tab.is-active .role-tab-icon,
   .time-done-check,
@@ -2141,6 +2168,7 @@ html[data-theme="dark"] :is(
 
 html[data-theme="dark"] :is(
   .role-tab:hover,
+  .new-project-btn:hover,
   .role-tab.is-active,
   .memo-font-btn:hover,
   .work-group-title:hover,
@@ -2160,6 +2188,7 @@ html[data-theme="dark"] :is(
 
 html[data-theme="dark"] :is(
   .role-tab.is-active,
+  .new-project-btn,
   .time-toggle,
   .memo-font-btn,
   .work-group-add,
@@ -2188,7 +2217,6 @@ html[data-theme="dark"] :is(
   .announce-icon,
   .search-icon,
   .drag-handle,
-  .ongoing-icon,
   .deadline-label,
   .time-leave-label,
   .quick-copy-title
@@ -2296,6 +2324,7 @@ html[data-theme="dark"] ::placeholder {
   .cloud-user { width: 100%; justify-content: flex-end; }
   .role-tabs { width: 100%; }
   .role-tab { flex: 1; justify-content: center; }
+  .new-project-btn { flex: 1 0 150px; }
   .top-panel { grid-template-columns: 1fr; }
   .image-drive-panel { grid-column: auto; }
   .time-block.open .time-content { grid-template-columns: 1fr; }

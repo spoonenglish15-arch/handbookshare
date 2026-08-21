@@ -5,6 +5,27 @@ service cloud.firestore {
       allow read, write: if tab == 'codi' || tab == 'coach' || tab == '2f' || tab == 'b1' || tab == 'announce';
     }
 
+    match /handbook/projectIndex {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly([
+          'projects', 'updatedAtMs', 'updatedBy'
+        ])
+        && request.resource.data.projects is list
+        && request.resource.data.projects.size() <= 200
+        && request.resource.data.updatedAtMs is int
+        && request.resource.data.updatedBy == 'shared';
+    }
+
+    match /handbook/{projectDoc} {
+      allow read: if projectDoc.matches('project--[a-z0-9-]{8,80}');
+      allow create, update: if projectDoc.matches('project--[a-z0-9-]{8,80}')
+        && request.resource.data.keys().hasOnly(['payload', 'updatedAtMs', 'updatedBy'])
+        && request.resource.data.payload is map
+        && request.resource.data.payload.role == projectDoc
+        && request.resource.data.updatedAtMs is int
+        && request.resource.data.updatedBy == 'shared';
+    }
+
     match /handbookImages/{imageId} {
       allow read: if true;
       allow create, update: if request.resource.data.image is bytes

@@ -4,6 +4,8 @@ const ACTIVE_TAB_KEY = 'spoon-handbook-active-tab-v1';
 const TAB_ORDER_KEY = 'spoon-handbook-tab-order-v1';
 const THEME_KEY = 'spoon-handbook-theme-v1';
 const DEFAULT_TAB_ORDER = ['codi', 'coach', '2f', 'b1'];
+const PROJECT_NAME_MAX_LENGTH = 30;
+const PROJECT_TAB_PREFIX = 'project--';
 const THEMES = {
   default: '기본',
   dark: '다크',
@@ -47,6 +49,9 @@ function loadTabOrder() {
       DEFAULT_TAB_ORDER.forEach(id => {
         if (!valid.includes(id)) valid.push(id);
       });
+      Object.keys(TABS).forEach(id => {
+        if (!valid.includes(id)) valid.push(id);
+      });
       return [...new Set(valid)];
     }
   } catch {
@@ -65,6 +70,7 @@ let dragSourceId = '';
 let dragSourceKind = '';
 let dragSourceCategoryId = '';
 let suppressRoleTabClick = false;
+let sharedProjects = [];
 
 const root = document.getElementById('manualRoot');
 const searchInput = document.getElementById('searchInput');
@@ -104,7 +110,122 @@ const cloudUserEmail = document.getElementById('cloudUserEmail');
 const themeMenuBtn = document.getElementById('themeMenuBtn');
 const themeMenu = document.getElementById('themeMenu');
 const themeCurrentLabel = document.getElementById('themeCurrentLabel');
+const newProjectBtn = document.getElementById('newProjectBtn');
 let applyingRemote = false;
+
+function projectTabId(projectId) {
+  return `${PROJECT_TAB_PREFIX}${projectId}`;
+}
+
+function registerSharedProjects(projects) {
+  const uniqueProjects = new Map();
+  (Array.isArray(projects) ? projects : []).forEach(project => {
+    if (
+      project
+      && /^[a-z0-9-]{8,80}$/.test(String(project.id || ''))
+      && String(project.name || '').trim()
+    ) {
+      uniqueProjects.set(String(project.id), project);
+    }
+  });
+  const nextProjects = [...uniqueProjects.values()];
+  const nextIds = new Set(nextProjects.map(project => projectTabId(project.id)));
+
+  Object.keys(TABS).forEach(id => {
+    if (id.startsWith(PROJECT_TAB_PREFIX) && !nextIds.has(id)) delete TABS[id];
+  });
+  nextProjects.forEach(project => {
+    const id = projectTabId(project.id);
+    TABS[id] = {
+      id,
+      projectId: project.id,
+      label: String(project.name).trim().slice(0, PROJECT_NAME_MAX_LENGTH),
+      storageKey: `spoon-handbook-${id}-data-v1`,
+      openKey: `spoon-handbook-${id}-open-v1`,
+      dynamic: true
+    };
+  });
+  sharedProjects = nextProjects;
+}
+
+function projectIconSvg() {
+  return `
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 7.5h6l1.5 2H20v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-11z" />
+      <path d="M4 11h16" />
+      <path d="M12 13.5v4M10 15.5h4" />
+    </svg>
+  `;
+}
+
+function renderSharedProjectTabs() {
+  const nav = document.querySelector('.role-tabs');
+  if (!nav) return;
+  nav.querySelectorAll('.role-tab[data-dynamic="true"]').forEach(button => button.remove());
+  sharedProjects.forEach(project => {
+    const id = projectTabId(project.id);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'role-tab';
+    button.dataset.tab = id;
+    button.dataset.dynamic = 'true';
+    button.setAttribute('aria-label', `${TABS[id].label} 프로젝트 탭`);
+    button.innerHTML = `
+      <span class="role-tab-icon" aria-hidden="true">${projectIconSvg()}</span>
+      <span class="role-tab-label">${escapeHtml(TABS[id].label)}</span>
+    `;
+    nav.insertBefore(button, newProjectBtn);
+  });
+  tabOrder = loadTabOrder();
+  saveTabOrder(tabOrder);
+  applyTabOrder();
+  bindRoleTabDrag();
+  updateTabUI();
+}
+
+function validateProjectName(rawName) {
+  const name = String(rawName || '').replace(/\s+/g, ' ').trim();
+  if (!name) return { error: '프로젝트 이름을 입력해 주세요.' };
+  if (name.length < 2) return { error: '프로젝트 이름은 2자 이상 입력해 주세요.' };
+  if (name.length > PROJECT_NAME_MAX_LENGTH) {
+    return { error: `프로젝트 이름은 ${PROJECT_NAME_MAX_LENGTH}자 이하로 입력해 주세요.` };
+  }
+  if (/[\u0000-\u001f\u007f]/.test(name)) return { error: '프로젝트 이름에 제어 문자를 사용할 수 없습니다.' };
+  if (sharedProjects.some(project => String(project.name).trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    return { error: '같은 이름의 프로젝트가 이미 있습니다.' };
+  }
+  return { name };
+}
+
+async function createSharedProject() {
+  if (!isCloudReady()) {
+    alert('Firestore 연결 후 새 프로젝트를 만들 수 있습니다.');
+    return;
+  }
+  const rawName = prompt(`새 프로젝트 이름을 입력해 주세요. (2~${PROJECT_NAME_MAX_LENGTH}자)`);
+  if (rawName === null) return;
+  const validated = validateProjectName(rawName);
+  if (validated.error) {
+    alert(validated.error);
+    return;
+  }
+
+  newProjectBtn.disabled = true;
+  try {
+    const project = await HandbookCloud.createProject(validated.name, emptyManualData());
+    registerSharedProjects([...sharedProjects, project]);
+    renderSharedProjectTabs();
+    await switchTab(projectTabId(project.id));
+    showToast(`‘${project.name}’ 프로젝트를 만들었습니다.`);
+  } catch (error) {
+    console.error(error);
+    alert(error?.code === 'project-name-duplicate'
+      ? '같은 이름의 프로젝트가 이미 있습니다.'
+      : (error?.message || '프로젝트를 만들지 못했습니다.'));
+  } finally {
+    newProjectBtn.disabled = false;
+  }
+}
 
 function loadTheme() {
   try {
@@ -595,6 +716,9 @@ function saveTabOrder(order) {
   DEFAULT_TAB_ORDER.forEach(id => {
     if (!tabOrder.includes(id)) tabOrder.push(id);
   });
+  Object.keys(TABS).forEach(id => {
+    if (!tabOrder.includes(id)) tabOrder.push(id);
+  });
   localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(tabOrder));
   localStorage.setItem(ACTIVE_TAB_KEY, tabOrder[0]);
 }
@@ -604,7 +728,7 @@ function applyTabOrder() {
   if (!nav) return;
   tabOrder.forEach(id => {
     const button = nav.querySelector(`.role-tab[data-tab="${id}"]`);
-    if (button) nav.appendChild(button);
+    if (button) nav.insertBefore(button, newProjectBtn);
   });
 }
 
@@ -656,6 +780,8 @@ function bindRoleTabDrag() {
   if (!nav) return;
 
   nav.querySelectorAll('.role-tab').forEach(button => {
+    if (button.dataset.roleTabBound === 'true') return;
+    button.dataset.roleTabBound = 'true';
     button.draggable = true;
 
     button.addEventListener('dragstart', event => {
@@ -858,11 +984,34 @@ async function startApp() {
   render();
 }
 
+async function loadSharedProjects() {
+  if (!isCloudReady()) return;
+  try {
+    registerSharedProjects(await HandbookCloud.loadProjects());
+    renderSharedProjectTabs();
+    activeTab = TABS[tabOrder[0]] ? tabOrder[0] : activeTab;
+    localStorage.setItem(ACTIVE_TAB_KEY, activeTab);
+  } catch (error) {
+    console.error(error);
+    showToast('공유 프로젝트 목록을 불러오지 못했습니다.');
+  }
+}
+
+function watchSharedProjects() {
+  if (!isCloudReady()) return;
+  HandbookCloud.subscribeProjects(projects => {
+    registerSharedProjects(projects);
+    renderSharedProjectTabs();
+  });
+}
+
 async function boot() {
-  applyTabOrder();
-  bindRoleTabDrag();
   updateCloudUserBar();
   if (window.HandbookCloud?.isEnabled()) HandbookCloud.init();
+  await loadSharedProjects();
+  applyTabOrder();
+  bindRoleTabDrag();
+  watchSharedProjects();
   await startApp();
 }
 
@@ -997,17 +1146,6 @@ function updateTimePreviewClock() {
   `;
 }
 
-function ongoingIconSvg() {
-  return `
-    <svg class="ongoing-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M4 12a8 8 0 0 1 13.7-5.7" />
-      <path d="M18 4v4h-4" />
-      <path d="M20 12a8 8 0 0 1-13.7 5.7" />
-      <path d="M6 20v-4h4" />
-    </svg>
-  `;
-}
-
 function formatDateValue(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -1138,11 +1276,10 @@ function createWorkBlockElement(block, categoryId, blockIndex, keyword) {
   header.innerHTML = `
     <div class="time-header-main">
       <span class="drag-handle" title="드래그해서 순서 변경" aria-hidden="true">⋮⋮</span>
+      ${isTime ? `
       <span class="mini-clock-wrap" aria-hidden="true">
-        ${isTime
-    ? renderAnalogClock({ size: 36, sectors: [sector], showLabels: false, className: 'mini-clock-svg' })
-    : ongoingIconSvg()}
-      </span>
+        ${renderAnalogClock({ size: 36, sectors: [sector], showLabels: false, className: 'mini-clock-svg' })}
+      </span>` : ''}
       <span class="time-title ${block.done ? 'is-done' : ''}">
         ${isTime ? `<strong class="time-label">${escapeHtml(block.label)}</strong>` : ''}
         <span class="title-check-group">
@@ -2414,6 +2551,7 @@ imageDriveInput?.addEventListener('keydown', event => {
   }
 });
 imageDriveOpenBtn?.addEventListener('click', openImageDrive);
+newProjectBtn?.addEventListener('click', createSharedProject);
 addWorkBtn?.addEventListener('click', addWorkCategory);
 cancelTaskBtn.addEventListener('click', () => taskDialog.close());
 cancelTimeBtn.addEventListener('click', () => timeDialog.close());

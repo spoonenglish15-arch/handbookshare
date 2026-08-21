@@ -9,6 +9,7 @@
   let lastAnnouncePushedAt = 0;
   let unsubscribe = null;
   let announceUnsub = null;
+  let projectsUnsub = null;
   let flushPromise = null;
   let announceTimer = null;
   let pendingAnnounce = null;
@@ -28,6 +29,33 @@
 
   function docRef(tabId) {
     return db.collection('handbook').doc(tabId);
+  }
+
+  function projectIndexRef() {
+    return docRef('projectIndex');
+  }
+
+  function projectDocId(projectId) {
+    return `project--${projectId}`;
+  }
+
+  function normalizeProjects(row) {
+    if (!Array.isArray(row?.projects)) return [];
+    return row.projects.filter(project => (
+      project
+      && /^[a-z0-9-]{8,80}$/.test(String(project.id || ''))
+      && String(project.name || '').trim()
+    )).map(project => ({
+      id: String(project.id),
+      name: String(project.name).trim().slice(0, 30),
+      createdAtMs: Number(project.createdAtMs || 0)
+    }));
+  }
+
+  function createProjectId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID().replace(/-/g, '');
+    const random = Math.random().toString(36).slice(2);
+    return `${Date.now().toString(36)}${random}${Math.random().toString(36).slice(2)}`;
   }
 
   function init() {
@@ -101,6 +129,76 @@
       updatedAtMs: lastPushedAt,
       updatedBy: payload.updatedBy
     });
+  }
+
+  async function loadProjects() {
+    if (!app) init();
+    if (!db) return [];
+    const snap = await projectIndexRef().get();
+    return snap.exists ? normalizeProjects(snap.data() || {}) : [];
+  }
+
+  async function createProject(name, initialData) {
+    if (!app) init();
+    if (!db) throw new Error('Firestore가 연결되지 않았습니다.');
+    const normalizedName = String(name || '').replace(/\s+/g, ' ').trim();
+    if (normalizedName.length < 2 || normalizedName.length > 30) {
+      throw new Error('프로젝트 이름은 2~30자로 입력해 주세요.');
+    }
+
+    const project = {
+      id: createProjectId(),
+      name: normalizedName,
+      createdAtMs: Date.now()
+    };
+    const payload = cloneData(initialData);
+    payload.role = projectDocId(project.id);
+    payload.updatedAtMs = project.createdAtMs;
+    payload.updatedBy = 'shared';
+
+    await db.runTransaction(async transaction => {
+      const indexRef = projectIndexRef();
+      const indexSnap = await transaction.get(indexRef);
+      const projects = indexSnap.exists ? normalizeProjects(indexSnap.data() || {}) : [];
+      const duplicate = projects.some(item => (
+        item.name.toLocaleLowerCase() === normalizedName.toLocaleLowerCase()
+      ));
+      if (duplicate) {
+        const error = new Error('같은 이름의 프로젝트가 이미 있습니다.');
+        error.code = 'project-name-duplicate';
+        throw error;
+      }
+      transaction.set(docRef(projectDocId(project.id)), {
+        payload,
+        updatedAtMs: project.createdAtMs,
+        updatedBy: 'shared'
+      });
+      transaction.set(indexRef, {
+        projects: [...projects, project],
+        updatedAtMs: project.createdAtMs,
+        updatedBy: 'shared'
+      });
+    });
+    return project;
+  }
+
+  function stopProjectsWatch() {
+    if (projectsUnsub) {
+      projectsUnsub();
+      projectsUnsub = null;
+    }
+  }
+
+  function subscribeProjects(onData) {
+    stopProjectsWatch();
+    if (!isEnabled()) return () => {};
+    projectsUnsub = projectIndexRef().onSnapshot(snap => {
+      const projects = snap.exists ? normalizeProjects(snap.data() || {}) : [];
+      if (typeof onData === 'function') onData(projects);
+    }, error => {
+      console.error(error);
+    });
+    return stopProjectsWatch;
   }
 
   function scheduleSave(tabId, data) {
@@ -210,6 +308,10 @@
     deleteTaskImage,
     loadTab,
     saveTabNow,
+    loadProjects,
+    createProject,
+    subscribeProjects,
+    stopProjectsWatch,
     scheduleSave,
     flushSave,
     subscribeTab,

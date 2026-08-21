@@ -10,7 +10,7 @@
       if (savedTheme) document.documentElement.dataset.theme = savedTheme;
     } catch {}
   </script>
-  <link rel="stylesheet" href="style.css?v=20260821d" />
+  <link rel="stylesheet" href="style.css?v=20260821f" />
 </head>
 <body>
   <div class="app-shell">
@@ -75,6 +75,10 @@
               </svg>
             </span>
             <span class="role-tab-label">B1</span>
+          </button>
+          <button type="button" id="newProjectBtn" class="new-project-btn" aria-label="새 공유 프로젝트 만들기">
+            <span class="new-project-icon" aria-hidden="true">+</span>
+            <span>NEW PROJECT</span>
           </button>
         </nav>
       </div>
@@ -212,7 +216,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js?v=20260814c"></script>
-  <script src="cloud.js?v=20260821b"></script>
-  <script src="app.js?v=20260821d"></script>
+  <script src="cloud.js?v=20260821c"></script>
+  <script src="app.js?v=20260821f"></script>
 </body>
 </html>
