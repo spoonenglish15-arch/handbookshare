@@ -8,6 +8,89 @@
   --accent-soft: #ebe7db;
   --danger: #b42318;
   --shadow: 0 14px 35px rgba(20, 20, 20, 0.08);
+  --theme-control: #ffffff;
+  --theme-soft: #f3ebe0;
+  --theme-hover: #faf6f0;
+  --theme-strong: #6b5234;
+  --theme-input: #ffffff;
+}
+
+html[data-theme="ocean"] {
+  --bg: #eaf3f7;
+  --card: #fafdff;
+  --text: #20343f;
+  --muted: #647985;
+  --border: #cbdde4;
+  --accent: #245d73;
+  --accent-soft: #dcecf2;
+  --theme-control: #fafdff;
+  --theme-soft: #dcecf2;
+  --theme-hover: #f0f7fa;
+  --theme-strong: #2d6d84;
+  --theme-input: #ffffff;
+}
+
+html[data-theme="forest"] {
+  --bg: #edf3ec;
+  --card: #fcfefb;
+  --text: #26382b;
+  --muted: #667769;
+  --border: #cedbcf;
+  --accent: #315f3c;
+  --accent-soft: #dfeadf;
+  --theme-control: #fcfefb;
+  --theme-soft: #dfeadf;
+  --theme-hover: #f1f6f0;
+  --theme-strong: #426c4a;
+  --theme-input: #ffffff;
+}
+
+html[data-theme="rose"] {
+  --bg: #f8eef0;
+  --card: #fffdfd;
+  --text: #412e33;
+  --muted: #806b70;
+  --border: #ead2d8;
+  --accent: #8b4c5d;
+  --accent-soft: #f1dde2;
+  --theme-control: #fffdfd;
+  --theme-soft: #f1dde2;
+  --theme-hover: #fcf3f5;
+  --theme-strong: #92566a;
+  --theme-input: #ffffff;
+}
+
+html[data-theme="lavender"] {
+  --bg: #f1eff8;
+  --card: #fefeff;
+  --text: #353047;
+  --muted: #746e85;
+  --border: #dcd6eb;
+  --accent: #625381;
+  --accent-soft: #e7e1f2;
+  --theme-control: #fefeff;
+  --theme-soft: #e7e1f2;
+  --theme-hover: #f6f3fb;
+  --theme-strong: #70608f;
+  --theme-input: #ffffff;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15181c;
+  --card: #22262b;
+  --text: #edf1f5;
+  --muted: #aab3bd;
+  --border: #3a424b;
+  --accent: #d7aa62;
+  --accent-soft: #383128;
+  --danger: #ff837a;
+  --shadow: 0 14px 35px rgba(0, 0, 0, .28);
+  --theme-control: #272c32;
+  --theme-soft: #34302a;
+  --theme-hover: #30363d;
+  --theme-strong: #e0b775;
+  --theme-input: #1e2227;
 }
 
 * { box-sizing: border-box; }
@@ -17,6 +100,7 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
+  transition: background-color .2s ease, color .2s ease;
 }
 
 .app-shell {
@@ -32,6 +116,97 @@ body {
   align-items: center;
   margin-bottom: 16px;
 }
+
+.brand-area {
+  position: relative;
+  display: grid;
+  align-content: center;
+  flex: 0 1 auto;
+  min-width: 250px;
+}
+
+.brand-area h1 {
+  margin-top: 1px;
+}
+
+.theme-picker {
+  position: relative;
+  z-index: 20;
+  width: max-content;
+}
+
+.theme-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--theme-control);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  box-shadow: none;
+}
+
+.theme-menu-btn:hover,
+.theme-menu-btn[aria-expanded="true"] {
+  background: var(--theme-hover);
+  color: var(--text);
+}
+
+.theme-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 132px;
+  padding: 6px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.theme-menu[hidden] {
+  display: none;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  box-shadow: none;
+}
+
+.theme-option:hover,
+.theme-option.is-active {
+  background: var(--theme-soft);
+}
+
+.theme-swatch {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(100, 100, 100, .3);
+  border-radius: 50%;
+}
+
+.swatch-default { background: #f3ebe0; }
+.swatch-dark { background: #22262b; }
+.swatch-ocean { background: #8fc5d7; }
+.swatch-forest { background: #91b596; }
+.swatch-rose { background: #d9a3b1; }
+.swatch-lavender { background: #b8a8d7; }
 
 .cloud-user {
   display: flex;
@@ -1837,6 +2012,108 @@ button, .file-label {
   transition: opacity .2s ease;
 }
 .toast.show { opacity: 1; }
+
+html[data-theme]:not([data-theme="default"]) :is(
+  .role-tab,
+  .role-tab-icon,
+  .notepad-input,
+  .search-box,
+  .task-card,
+  .inline-field textarea,
+  .rich-description-editor,
+  .link-add-input,
+  .link-chip-rename-input,
+  .deadline-panel,
+  .dialog input,
+  .dialog textarea,
+  .dialog select,
+  .quick-copy-add input,
+  .quick-copy-add textarea,
+  .image-drive-row input
+) {
+  border-color: var(--border);
+  background: var(--theme-input);
+  color: var(--text);
+}
+
+html[data-theme]:not([data-theme="default"]) :is(
+  .role-tab.is-active,
+  .memo-font-btn,
+  .time-toggle,
+  .rich-image-add,
+  .link-add-btn,
+  .quick-copy-add button
+) {
+  border-color: var(--border);
+  background: var(--theme-soft);
+  color: var(--theme-strong);
+}
+
+html[data-theme]:not([data-theme="default"]) :is(
+  .role-tab:hover,
+  .inline-title:hover,
+  .inline-title:focus,
+  .owner input:hover,
+  .owner input:focus,
+  .quick-copy-item
+) {
+  border-color: var(--border);
+  background: var(--theme-hover);
+  color: var(--text);
+}
+
+html[data-theme]:not([data-theme="default"]) :is(
+  .work-group-title,
+  .inline-summary,
+  .inline-title,
+  .owner input,
+  .check-text
+) {
+  color: var(--text);
+}
+
+html[data-theme]:not([data-theme="default"]) :is(
+  .role-tab,
+  .role-tab.is-active,
+  .quick-copy-title,
+  .image-drive-open-btn
+) {
+  color: var(--theme-strong);
+}
+
+html[data-theme="dark"] .auth-gate {
+  background: rgba(21, 24, 28, .94);
+}
+
+html[data-theme="dark"] :is(
+  .announce-box,
+  .time-block,
+  .mini-clock-wrap,
+  .check-item,
+  .phrase,
+  .rich-image-frame,
+  .link-chip,
+  .deadline-day.is-selected,
+  .quick-copy-item
+) {
+  border-color: var(--border);
+  background: var(--theme-control);
+  color: var(--text);
+}
+
+html[data-theme="dark"] :is(
+  .link-chip,
+  .collapsed-link-icon,
+  .deadline-left
+) {
+  border-color: #4d6655;
+  background: #263d2e;
+  color: #a8ddb5;
+}
+
+html[data-theme="dark"] ::placeholder {
+  color: #7f8994;
+}
 
 @media (max-width: 1100px) {
   .app-shell { width: min(100% - 32px, 1100px); }

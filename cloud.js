@@ -41,8 +41,8 @@
     if (!blob || !String(blob.type || '').startsWith('image/')) {
       throw new Error('이미지 파일만 저장할 수 있습니다.');
     }
-    if (blob.size > 700 * 1024) {
-      throw new Error('압축된 이미지가 700KB를 초과합니다.');
+    if (blob.size > 300 * 1024) {
+      throw new Error('압축된 이미지가 300KB를 초과합니다.');
     }
     if (!app) init();
     if (!db) throw new Error('Firestore가 연결되지 않았습니다.');

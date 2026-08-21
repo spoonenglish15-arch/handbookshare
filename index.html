@@ -4,13 +4,34 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SPOON TEAM HANDBOOK</title>
-  <link rel="stylesheet" href="style.css?v=20260820b" />
+  <script>
+    try {
+      const savedTheme = localStorage.getItem('spoon-handbook-theme-v1');
+      if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+    } catch {}
+  </script>
+  <link rel="stylesheet" href="style.css?v=20260821a" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar-main">
-        <h1 id="appTitle">SPOON TEAM HANDBOOK</h1>
+        <div class="brand-area">
+          <div class="theme-picker">
+            <button type="button" id="themeMenuBtn" class="theme-menu-btn" aria-haspopup="true" aria-expanded="false">
+              스킨 <span id="themeCurrentLabel">기본</span>
+            </button>
+            <div id="themeMenu" class="theme-menu" role="menu" hidden>
+              <button type="button" class="theme-option" data-theme="default" role="menuitem"><span class="theme-swatch swatch-default"></span>기본</button>
+              <button type="button" class="theme-option" data-theme="dark" role="menuitem"><span class="theme-swatch swatch-dark"></span>다크</button>
+              <button type="button" class="theme-option" data-theme="ocean" role="menuitem"><span class="theme-swatch swatch-ocean"></span>오션</button>
+              <button type="button" class="theme-option" data-theme="forest" role="menuitem"><span class="theme-swatch swatch-forest"></span>포레스트</button>
+              <button type="button" class="theme-option" data-theme="rose" role="menuitem"><span class="theme-swatch swatch-rose"></span>로즈</button>
+              <button type="button" class="theme-option" data-theme="lavender" role="menuitem"><span class="theme-swatch swatch-lavender"></span>라벤더</button>
+            </div>
+          </div>
+          <h1 id="appTitle">SPOON TEAM HANDBOOK</h1>
+        </div>
         <nav class="role-tabs" aria-label="역할 탭">
           <button type="button" class="role-tab is-active" data-tab="codi" aria-label="코디 탭">
             <span class="role-tab-icon" aria-hidden="true">
@@ -191,7 +212,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js?v=20260814c"></script>
-  <script src="cloud.js?v=20260820b"></script>
-  <script src="app.js?v=20260820b"></script>
+  <script src="cloud.js?v=20260821b"></script>
+  <script src="app.js?v=20260821b"></script>
 </body>
 </html>

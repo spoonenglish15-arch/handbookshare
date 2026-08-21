@@ -2,7 +2,16 @@ const LEGACY_STORAGE_KEY = 'spoon-operation-manual-data-v1';
 const LEGACY_OPEN_KEY = 'spoon-operation-manual-open-blocks-v1';
 const ACTIVE_TAB_KEY = 'spoon-handbook-active-tab-v1';
 const TAB_ORDER_KEY = 'spoon-handbook-tab-order-v1';
+const THEME_KEY = 'spoon-handbook-theme-v1';
 const DEFAULT_TAB_ORDER = ['codi', 'coach', '2f', 'b1'];
+const THEMES = {
+  default: '기본',
+  dark: '다크',
+  ocean: '오션',
+  forest: '포레스트',
+  rose: '로즈',
+  lavender: '라벤더'
+};
 const TABS = {
   codi: {
     id: 'codi',
@@ -91,7 +100,44 @@ const timeForm = document.getElementById('timeForm');
 const cancelTimeBtn = document.getElementById('cancelTimeBtn');
 const cloudUserBar = document.getElementById('cloudUserBar');
 const cloudUserEmail = document.getElementById('cloudUserEmail');
+const themeMenuBtn = document.getElementById('themeMenuBtn');
+const themeMenu = document.getElementById('themeMenu');
+const themeCurrentLabel = document.getElementById('themeCurrentLabel');
 let applyingRemote = false;
+
+function loadTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY) || 'default';
+    return THEMES[saved] ? saved : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+function applyTheme(theme) {
+  const next = THEMES[theme] ? theme : 'default';
+  document.documentElement.dataset.theme = next;
+  if (themeCurrentLabel) themeCurrentLabel.textContent = THEMES[next];
+  themeMenu?.querySelectorAll('.theme-option').forEach(option => {
+    const active = option.dataset.theme === next;
+    option.classList.toggle('is-active', active);
+    option.setAttribute('aria-current', active ? 'true' : 'false');
+  });
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* ignore */
+  }
+}
+
+function closeThemeMenu() {
+  if (!themeMenu || !themeMenuBtn) return;
+  themeMenu.hidden = true;
+  themeMenuBtn.setAttribute('aria-expanded', 'false');
+}
+
+applyTheme(loadTheme());
+
 function emptyManualData() {
   return {
     version: '1.0.0',
@@ -1475,7 +1521,7 @@ function insertPlainTextAtCaret(editor, text) {
 }
 
 async function compressImageForFirestore(file) {
-  const MAX_BYTES = 700 * 1024;
+  const MAX_BYTES = 300 * 1024;
   if (!file || !String(file.type || '').startsWith('image/')) {
     throw new Error('이미지 파일만 첨부할 수 있습니다.');
   }
@@ -1513,7 +1559,7 @@ async function compressImageForFirestore(file) {
     bitmap.close?.();
   }
 
-  throw new Error(`이미지를 700KB 이하로 압축하지 못했습니다. (${Math.round((result?.size || 0) / 1024)}KB)`);
+  throw new Error(`이미지를 300KB 이하로 압축하지 못했습니다. (${Math.round((result?.size || 0) / 1024)}KB)`);
 }
 
 function bindRichDescriptionEditor(editor, fileInput, task) {
@@ -2238,10 +2284,30 @@ editToggle.addEventListener('click', () => {
   render();
 });
 
+themeMenuBtn?.addEventListener('click', event => {
+  event.stopPropagation();
+  const opening = themeMenu.hidden;
+  themeMenu.hidden = !opening;
+  themeMenuBtn.setAttribute('aria-expanded', String(opening));
+});
+themeMenu?.addEventListener('click', event => {
+  event.stopPropagation();
+  const option = event.target.closest('.theme-option');
+  if (!option) return;
+  applyTheme(option.dataset.theme);
+  closeThemeMenu();
+});
+
 searchInput.addEventListener('input', render);
-document.addEventListener('click', () => closeDeadlinePopovers());
+document.addEventListener('click', () => {
+  closeDeadlinePopovers();
+  closeThemeMenu();
+});
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') closeDeadlinePopovers();
+  if (event.key === 'Escape') {
+    closeDeadlinePopovers();
+    closeThemeMenu();
+  }
 });
 let announceSaveTimer = null;
 announceInput?.addEventListener('input', () => {
