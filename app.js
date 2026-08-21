@@ -63,6 +63,7 @@ let editMode = false;
 let openBlocks = new Set();
 let dragSourceId = '';
 let dragSourceKind = '';
+let dragSourceCategoryId = '';
 let suppressRoleTabClick = false;
 
 const root = document.getElementById('manualRoot');
@@ -1380,6 +1381,7 @@ function renderWorkCategory(category, keyword) {
     empty.textContent = keyword ? '검색 결과가 없습니다.' : '할일을 추가하시오';
     list.appendChild(empty);
   }
+  bindBlockListDrop(list, category.id);
 
   const nameMatch = keyword && (category.name || '').toLowerCase().includes(keyword.toLowerCase());
   if (keyword && visibleCount === 0 && !nameMatch) return null;
@@ -1912,20 +1914,25 @@ function clearDragIndicators() {
   });
   hideQuickCopyDropGuide();
   hideBlockDropGuide();
+  document.querySelectorAll('.work-group-list.is-block-drop-target').forEach(list => {
+    list.classList.remove('is-block-drop-target');
+  });
 }
 
-function moveWorkBlock(categoryId, fromId, toId, placeAfter) {
-  if (!fromId || !toId || fromId === toId) return false;
-  const blocks = getBlocks(categoryId);
-  const fromIndex = blocks.findIndex(item => item.id === fromId);
+function moveWorkBlock(sourceCategoryId, targetCategoryId, fromId, toId = '', placeAfter = true) {
+  if (!sourceCategoryId || !targetCategoryId || !fromId) return false;
+  if (sourceCategoryId === targetCategoryId && fromId === toId) return false;
+  const sourceBlocks = getBlocks(sourceCategoryId);
+  const targetBlocks = getBlocks(targetCategoryId);
+  const fromIndex = sourceBlocks.findIndex(item => item.id === fromId);
   if (fromIndex < 0) return false;
-  const [moved] = blocks.splice(fromIndex, 1);
-  let toIndex = blocks.findIndex(item => item.id === toId);
-  if (toIndex < 0) {
-    blocks.push(moved);
+  const [moved] = sourceBlocks.splice(fromIndex, 1);
+  let toIndex = targetBlocks.findIndex(item => item.id === toId);
+  if (!toId || toIndex < 0) {
+    targetBlocks.push(moved);
   } else {
     if (placeAfter) toIndex += 1;
-    blocks.splice(toIndex, 0, moved);
+    targetBlocks.splice(toIndex, 0, moved);
   }
   saveLocal();
   render();
@@ -1976,11 +1983,13 @@ function bindBlockDrag(section, blockId, categoryId) {
   handle.draggable = true;
   handle.addEventListener('dragstart', event => {
     dragSourceId = blockId;
-    dragSourceKind = categoryId;
+    dragSourceKind = 'work-block';
+    dragSourceCategoryId = categoryId;
     section.classList.add('is-dragging');
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', blockId);
     event.dataTransfer.setData('application/x-time-id', blockId);
+    event.dataTransfer.setData('application/x-source-category', categoryId);
     try {
       event.dataTransfer.setDragImage(section, 24, 20);
     } catch {
@@ -1991,6 +2000,7 @@ function bindBlockDrag(section, blockId, categoryId) {
   handle.addEventListener('dragend', () => {
     dragSourceId = '';
     dragSourceKind = '';
+    dragSourceCategoryId = '';
     clearDragIndicators();
   });
 
@@ -2000,7 +2010,7 @@ function bindBlockDrag(section, blockId, categoryId) {
   };
 
   const onDragOver = event => {
-    if (!dragSourceId || dragSourceKind !== categoryId || dragSourceId === blockId) {
+    if (!dragSourceId || dragSourceKind !== 'work-block' || dragSourceId === blockId) {
       if (dragSourceId === blockId) hideBlockDropGuide();
       return;
     }
@@ -2013,21 +2023,26 @@ function bindBlockDrag(section, blockId, categoryId) {
   const onDrop = event => {
     event.preventDefault();
     event.stopPropagation();
-    if (dragSourceKind && dragSourceKind !== categoryId) {
+    if (dragSourceKind !== 'work-block') {
       clearDragIndicators();
       dragSourceId = '';
       dragSourceKind = '';
+      dragSourceCategoryId = '';
       return;
     }
     const fromId = dragSourceId
       || event.dataTransfer.getData('application/x-time-id')
       || event.dataTransfer.getData('text/plain');
+    const sourceCategoryId = dragSourceCategoryId
+      || event.dataTransfer.getData('application/x-source-category');
     const placeAfter = placeAfterPoint(event);
     clearDragIndicators();
-    const moved = moveWorkBlock(categoryId, fromId, blockId, placeAfter);
+    const moved = moveWorkBlock(sourceCategoryId, categoryId, fromId, blockId, placeAfter);
+    const movedAcrossGroups = sourceCategoryId !== categoryId;
     dragSourceId = '';
     dragSourceKind = '';
-    if (moved) showToast('순서를 변경했습니다.');
+    dragSourceCategoryId = '';
+    if (moved) showToast(movedAcrossGroups ? '다른 업무로 이동했습니다.' : '순서를 변경했습니다.');
   };
 
   section.addEventListener('dragover', onDragOver, true);
@@ -2035,6 +2050,35 @@ function bindBlockDrag(section, blockId, categoryId) {
   section.addEventListener('dragleave', event => {
     if (section.contains(event.relatedTarget)) return;
     hideBlockDropGuide();
+  });
+}
+
+function bindBlockListDrop(list, targetCategoryId) {
+  list.addEventListener('dragover', event => {
+    if (!dragSourceId || dragSourceKind !== 'work-block') return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    list.classList.add('is-block-drop-target');
+  });
+  list.addEventListener('dragleave', event => {
+    if (list.contains(event.relatedTarget)) return;
+    list.classList.remove('is-block-drop-target');
+  });
+  list.addEventListener('drop', event => {
+    if (dragSourceKind !== 'work-block') return;
+    event.preventDefault();
+    const fromId = dragSourceId
+      || event.dataTransfer.getData('application/x-time-id')
+      || event.dataTransfer.getData('text/plain');
+    const sourceCategoryId = dragSourceCategoryId
+      || event.dataTransfer.getData('application/x-source-category');
+    clearDragIndicators();
+    const moved = moveWorkBlock(sourceCategoryId, targetCategoryId, fromId);
+    const movedAcrossGroups = sourceCategoryId !== targetCategoryId;
+    dragSourceId = '';
+    dragSourceKind = '';
+    dragSourceCategoryId = '';
+    if (moved) showToast(movedAcrossGroups ? '다른 업무로 이동했습니다.' : '맨 아래로 이동했습니다.');
   });
 }
 

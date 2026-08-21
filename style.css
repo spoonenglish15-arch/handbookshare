@@ -77,20 +77,20 @@ html[data-theme="lavender"] {
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #15181c;
-  --card: #22262b;
-  --text: #edf1f5;
-  --muted: #aab3bd;
-  --border: #3a424b;
-  --accent: #d7aa62;
-  --accent-soft: #383128;
-  --danger: #ff837a;
+  --bg: #1e1e1e;
+  --card: #252526;
+  --text: #e7e7e7;
+  --muted: #a6a6a6;
+  --border: #3f3f46;
+  --accent: #3b82f6;
+  --accent-soft: #293548;
+  --danger: #ff7b72;
   --shadow: 0 14px 35px rgba(0, 0, 0, .28);
-  --theme-control: #272c32;
-  --theme-soft: #34302a;
-  --theme-hover: #30363d;
-  --theme-strong: #e0b775;
-  --theme-input: #1e2227;
+  --theme-control: #2b2b2d;
+  --theme-soft: #303947;
+  --theme-hover: #333337;
+  --theme-strong: #d4d4d4;
+  --theme-input: #202022;
 }
 
 * { box-sizing: border-box; }
@@ -794,6 +794,15 @@ button, .file-label {
   position: relative;
   display: grid;
   gap: 8px;
+  min-height: 54px;
+  border-radius: 14px;
+  transition: background-color .12s ease, outline-color .12s ease;
+}
+
+.work-group-list.is-block-drop-target {
+  outline: 2px dashed #9f825d;
+  outline-offset: 4px;
+  background: rgba(184, 159, 120, .1);
 }
 
 .block-drop-guide {
@@ -2082,19 +2091,48 @@ html[data-theme]:not([data-theme="default"]) :is(
 }
 
 html[data-theme="dark"] .auth-gate {
-  background: rgba(21, 24, 28, .94);
+  background: rgba(30, 30, 30, .96);
 }
 
 html[data-theme="dark"] :is(
+  .theme-menu,
+  .notepad-panel,
+  .toolbar,
+  .work-group,
   .announce-box,
+  .time-preview-clock,
+  .group-empty,
   .time-block,
   .mini-clock-wrap,
+  .ongoing-block .mini-clock-wrap,
+  .task-card,
   .check-item,
   .phrase,
   .rich-image-frame,
-  .link-chip,
-  .deadline-day.is-selected,
-  .quick-copy-item
+  .deadline-panel,
+  .quick-copy-item,
+  .quick-copy-panel,
+  .image-drive-panel,
+  .dialog
+) {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--text);
+}
+
+html[data-theme="dark"] :is(
+  .role-tab,
+  .role-tab-icon,
+  .role-tab.is-active .role-tab-icon,
+  .time-done-check,
+  .time-leave-check,
+  .time-leave-add,
+  .time-leave-remove,
+  .deadline-icon-btn,
+  .link-chip-rename,
+  .rich-image-frame,
+  .quick-copy-item,
+  .toolbar-actions .data-io-btn
 ) {
   border-color: var(--border);
   background: var(--theme-control);
@@ -2102,17 +2140,145 @@ html[data-theme="dark"] :is(
 }
 
 html[data-theme="dark"] :is(
-  .link-chip,
-  .collapsed-link-icon,
-  .deadline-left
+  .role-tab:hover,
+  .role-tab.is-active,
+  .memo-font-btn:hover,
+  .work-group-title:hover,
+  .work-group-title:focus,
+  .inline-summary:hover,
+  .inline-summary:focus,
+  .inline-title:hover,
+  .inline-title:focus,
+  .owner input:hover,
+  .owner input:focus,
+  .link-chip-rename:hover
 ) {
-  border-color: #4d6655;
-  background: #263d2e;
-  color: #a8ddb5;
+  border-color: #4b5563;
+  background: var(--theme-hover);
+  color: var(--text);
+}
+
+html[data-theme="dark"] :is(
+  .role-tab.is-active,
+  .time-toggle,
+  .memo-font-btn,
+  .work-group-add,
+  .rich-image-add,
+  .link-add-btn,
+  .quick-copy-btn,
+  .quick-copy-add button
+) {
+  border-color: #46556c;
+  background: var(--theme-soft);
+  color: #dbe7f8;
+}
+
+html[data-theme="dark"] :is(
+  input,
+  textarea,
+  select,
+  .rich-description-editor
+) {
+  border-color: var(--border);
+  background-color: var(--theme-input);
+  color: var(--text);
+}
+
+html[data-theme="dark"] :is(
+  .announce-icon,
+  .search-icon,
+  .drag-handle,
+  .ongoing-icon,
+  .deadline-label,
+  .time-leave-label,
+  .quick-copy-title
+) {
+  color: var(--muted);
+}
+
+html[data-theme="dark"] :is(
+  .link-chip,
+  .collapsed-link-icon
+) {
+  border-color: #3d6653;
+  background: #243b31;
+  color: #9ed8ba;
+}
+
+html[data-theme="dark"] :is(
+  .deadline-icon-btn.has-date,
+  .deadline-wrap.is-open .deadline-icon-btn,
+  .deadline-day.is-selected
+) {
+  border-color: #3d6653;
+  background: #243b31;
+  color: #9ed8ba;
+}
+
+html[data-theme="dark"] .work-group {
+  background: #232324;
+}
+
+html[data-theme="dark"] .work-group-list.is-block-drop-target {
+  outline-color: #6b93d6;
+  background: rgba(59, 130, 246, .1);
+}
+
+html[data-theme="dark"] .announce-box.has-text {
+  border-color: #46556c;
+  background: #272d36;
+}
+
+html[data-theme="dark"] .announce-box.is-fresh {
+  animation: darkAnnounceFlash .65s ease-in-out 5;
+}
+
+@keyframes darkAnnounceFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, .08); background: #272d36; }
+  50% { box-shadow: 0 0 0 7px rgba(59, 130, 246, .22); background: #2c3748; }
+}
+
+html[data-theme="dark"] .clock-disk {
+  fill: #2b2b2d;
+  stroke: #4a4a50;
+}
+
+html[data-theme="dark"] .clock-marks line {
+  stroke: #777780;
+}
+
+html[data-theme="dark"] .clock-marks text {
+  fill: #b6b6bd;
+}
+
+html[data-theme="dark"] .clock-sector,
+html[data-theme="dark"] .mini-clock-svg .clock-sector {
+  stroke: #252526;
+}
+
+html[data-theme="dark"] .clock-hub {
+  fill: #9ca3af;
+}
+
+html[data-theme="dark"] .primary-btn,
+html[data-theme="dark"] #addWorkBtn {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="dark"] .image-drive-open-btn {
+  border-color: #4b5563;
+  background: #333337;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .dialog::backdrop {
+  background: rgba(0, 0, 0, .68);
 }
 
 html[data-theme="dark"] ::placeholder {
-  color: #7f8994;
+  color: #7f7f87;
 }
 
 @media (max-width: 1100px) {
